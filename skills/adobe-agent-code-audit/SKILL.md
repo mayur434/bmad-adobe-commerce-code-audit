@@ -1,3 +1,8 @@
+---
+name: adobe-agent-code-audit
+description: "Two-tier code auditor for Adobe Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic Python static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis."
+---
+
 # Adobe Code Audit Skill
 
 ## Purpose
