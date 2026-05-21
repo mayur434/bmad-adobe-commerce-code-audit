@@ -1,0 +1,96 @@
+{
+    "project": {
+        "path": "/Users/mayur.parmar/Documents/code/commerce/Vijay-Sales",
+        "name": "Vijay-Sales"
+    },
+    "output": {
+        "directory": "output"
+    },
+    "analysis": {
+        "code_audit": "yes",
+        "brd": [
+            "/Users/mayur.parmar/Documents/code/plugins/adobe-commerce-audit/templates/Adobe_Commerce_Headless_Loyalty_BRD_Reference.docx"
+        ],
+        "bug_report": "",
+        "patch": {
+            "enabled": true,
+            "from_version": "2.4.7-p7",
+            "to_version": "2.4.7-p9",
+            "patch_ids": [],
+            "deprecated_classes": [],
+            "removed_methods": [],
+            "changed_interfaces": [],
+            "db_schema_changes": []
+        }
+    },
+    "scanner": {
+        "namespace": "Custom",
+        "categories": [
+            "Exception Handling",
+            "Security",
+            "Database",
+            "Caching",
+            "Code Structure",
+            "Performance",
+            "Deprecated",
+            "Logging",
+            "File Storage",
+            "Reusability",
+            "Test Coverage",
+            "Dependency Injection",
+            "Plugin Architecture",
+            "Cron Jobs",
+            "GraphQL",
+            "Queue Processing",
+            "Configuration",
+            "Frontend Templates",
+            "XML Configuration",
+            "WebAPI & ACL",
+            "DB Schema",
+            "Infrastructure",
+            "Cloud Deployment",
+            "PHP Deep Analysis",
+            "Event Observers",
+            "Module Architecture",
+            "Code Metrics",
+            "Business Logic Identification",
+            "Logical Flow & Cross-Module",
+            "Coding Standards",
+            "Input Validation & XSS",
+            "Frontend Assets",
+            "Composer & Dependencies",
+            "Full Page Cache & Private Content",
+            "Backward Compatibility",
+            "Configuration & Scope",
+            "Layout & UI Components",
+            "XML Schema Validation",
+            "DB: Table Structure",
+            "DB: Index Analysis",
+            "DB: Column Analysis",
+            "DB: Foreign Keys",
+            "DB: Naming Conventions",
+            "DB: Storage Engine",
+            "DB: Charset & Collation",
+            "DB: Adobe Commerce Schema",
+            "DB: Data Integrity",
+            "DB: Performance",
+            "Admin & Integration Security",
+            "MSI Inventory & Source Management",
+            "Critical Commerce Flows",
+            "Business Customization Review"
+        ],
+        "modules": []
+    },
+    "database": {
+        "dump_path": "/Users/mayur.parmar/Downloads/prod-db-bkp.sql"
+    },
+    "thresholds": {
+        "god_class_lines": 500,
+        "fat_constructor_deps": 10,
+        "large_file_lines": 300,
+        "very_large_file_lines": 600,
+        "verbose_log_limit": 10,
+        "max_php_blocks_in_template": 10,
+        "max_methods_per_class": 20
+    }
+}

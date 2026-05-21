@@ -1,0 +1,28 @@
+[skill]
+name = "adobe-agent-code-audit"
+description = "Two-tier code auditor for Adobe Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic Python static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis (architecture, cross-file flows, contextual reasoning)."
+version = "2.0.0"
+
+[skill.tools]
+required = ["claude-code"]
+
+[skill.activation]
+keywords = ["audit", "code review", "code quality", "adobe audit", "aem audit", "commerce audit", "eds audit", "code scan", "static analysis"]
+
+[skill.scripts]
+dispatcher = "scripts/run.py"
+requirements = "scripts/requirements.txt"
+
+[skill.commands]
+# Tier 1: Run deterministic Python scanner (auto-detects platform)
+scan = "python3 scripts/run.py"
+# Tier 1 with explicit engine
+scan-commerce = "python3 scripts/run.py --engine commerce"
+scan-aem = "python3 scripts/run.py --engine aem"
+scan-eds = "python3 scripts/run.py --engine eds"
+# Tier 2: LLM deep analysis (uses rule packs + detection strategy)
+deep-audit = "skill"
+# Combined: run Tier 1 then Tier 2 on flagged areas
+full-audit = "scan+skill"
+# Utility
+list-engines = "python3 scripts/run.py --list-engines"
