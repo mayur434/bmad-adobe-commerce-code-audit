@@ -1,5 +1,7 @@
 # Adobe Code Audit — BMAD Custom Module
 
+[![GitHub](https://img.shields.io/badge/GitHub-mayur434%2Fbmad--adobe--commerce--code--audit-blue)](https://github.com/mayur434/bmad-adobe-commerce-code-audit)
+
 Two-tier enterprise code audit for **Adobe Commerce**, **AEM as a Cloud Service**, **Edge Delivery Services**, and **EDS+Commerce** hybrid projects.
 
 | Tier | Method | Output | Speed |
