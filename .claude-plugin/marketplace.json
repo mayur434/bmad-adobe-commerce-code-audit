@@ -8,7 +8,7 @@
   "repository": "https://github.com/mayur434/bmad-adobe-commerce-code-audit",
   "plugins": [
     {
-      "name": "adobe-agent-code-audit",
+      "name": "aca",
       "source": "./skills",
       "description": "Two-tier code audit for Adobe Commerce, AEMaaCS, EDS, and hybrid projects.",
       "version": "2.0.0",

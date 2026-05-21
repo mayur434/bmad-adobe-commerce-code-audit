@@ -1,0 +1,48 @@
+code: aca
+name: "Adobe Code Audit"
+header: "Adobe Code Audit: Two-tier static analysis + AI-driven deep audit"
+subheader: "Deterministic Python scanner (42+ categories) + LLM semantic analysis for Commerce, AEM, EDS"
+description: "Two-tier code audit for Adobe Commerce, AEMaaCS, EDS, and hybrid projects"
+default_selected: false
+recommendedModules: [bmm]
+requiredModules: [core]
+
+agents:
+  - code: bmad-code-auditor
+    name: Auditor
+    title: Adobe Code Audit Specialist
+    icon: "🔍"
+    description: "Enterprise code auditor for Adobe ecosystem. Performs deterministic static analysis (42+ categories) and AI-driven semantic analysis across Commerce, AEM, and EDS platforms."
+    team: software-development
+
+# Configuration variables
+audit_output:
+  prompt: "Where should audit reports be stored?"
+  default: "{output_folder}/audit-reports"
+  result: "{project-root}/{value}"
+
+audit_engine:
+  prompt: "Default audit engine (auto-detects if not set)?"
+  default: "auto"
+  single-select: ["auto", "commerce", "aem", "eds", "eds-commerce"]
+
+audit_namespace:
+  prompt: "Custom module namespace for Commerce projects?"
+  default: "Custom"
+
+directories:
+  - "{audit_output}"
+
+post-install-notes: |
+  Adobe Code Audit module installed.
+
+  Quick usage:
+    Ask: "audit my project" or "run a code review"
+
+  Tier 1 (Python scanner):
+    python3 .claude/skills/bmad-code-audit/scripts/run.py --path . --engine commerce
+
+  Tier 2 (AI deep analysis):
+    Triggered automatically when you ask the agent to audit.
+
+  Prerequisites: Python 3.10+, pip install openpyxl python-docx
