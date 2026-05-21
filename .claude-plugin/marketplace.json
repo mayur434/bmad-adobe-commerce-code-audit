@@ -1,0 +1,20 @@
+{
+  "name": "bmad-adobe-commerce-code-audit",
+  "owner": {
+    "name": "mayur434"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/mayur434/bmad-adobe-commerce-code-audit",
+  "repository": "https://github.com/mayur434/bmad-adobe-commerce-code-audit",
+  "plugins": [
+    {
+      "name": "adobe-agent-code-audit",
+      "source": "./skills",
+      "description": "Two-tier code audit for Adobe Commerce, AEMaaCS, EDS, and hybrid projects.",
+      "version": "2.0.0",
+      "skills": [
+        "./skills/adobe-agent-code-audit"
+      ]
+    }
+  ]
+}
