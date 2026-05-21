@@ -54,13 +54,21 @@ Do NOT ask the user for permission to install these — they are required for th
 
 ## Consent: Ask Audit Mode
 
-Before starting the audit, ask the user which mode they prefer:
+**Direct-intent triggers (skip the question, go straight to that mode):**
+- "scan my project" / "run scanner" / "quick scan" → Tier 1 (Scanner)
+- "deep audit" / "LLM analysis" / "semantic audit" → Tier 2 (LLM)
+- "full audit" / "complete audit" → Tier 1 + Tier 2
+
+**Ambiguous triggers (ask which mode):**
+- "audit my project" / "run code review" / "check my code"
+
+When asking, present:
 
 > **How would you like to audit this project?**
 >
-> 1. **Scanner** — Fast deterministic scan (Python). Produces Excel report in seconds. Best for: quick health checks, CI pipelines, repeatable baselines.
-> 2. **LLM Analysis** — AI-driven semantic analysis. Catches architectural flaws, cross-file issues, business logic bugs. Best for: deep code reviews, pre-release audits.
-> 3. **Full Audit (Scanner + LLM)** — Run both. Scanner first, then LLM analyzes high-severity findings deeper. Best for: comprehensive enterprise audits.
+> 1. **Scanner** — Fast deterministic scan. Produces Excel report in seconds.
+> 2. **LLM Analysis** — AI-driven semantic analysis. Catches architectural flaws, cross-file issues.
+> 3. **Full Audit (Scanner + LLM)** — Run both for comprehensive coverage.
 
 Proceed with the user's chosen mode.
 
