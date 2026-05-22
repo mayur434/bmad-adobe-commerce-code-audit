@@ -205,6 +205,7 @@ Tier 1 (Python Script)           Tier 2 (LLM Skill)
 
 | File | Purpose |
 |------|---------|
+| [MANUAL.md](MANUAL.md) | **Team guide** — how to create a new BMAD custom module from scratch |
 | [SKILL.md](skills/adobe-agent-code-audit/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
 | [GUIDE.md](skills/adobe-agent-code-audit/GUIDE.md) | Human-readable setup and usage guide |
 | [customize.toml](skills/adobe-agent-code-audit/customize.toml) | Skill metadata, commands, activation keywords |
