@@ -1,0 +1,21 @@
+# BMad installer output (regenerated via: npx bmad-method install)
+.claude/
+_bmad/
+_bmad-output/
+.claude-plugin/
+docs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+venv/
+.env
+
+# Output
+skills/adobe-agent-code-audit/scripts/engines/commerce/output/
+skills/audit-reports/
