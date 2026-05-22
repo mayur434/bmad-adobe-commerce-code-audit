@@ -1053,6 +1053,285 @@ public class NavigationModel {
 
 ---
 
+### AEMAMS-PERF-007: Excessive Client Library Size
+
+- **Severity**: Medium
+- **Description**: Client libraries exceeding 100 KB (uncompressed JS) or bundling unused code degrade page load time. On AMS, CDN offload is not guaranteed and Dispatcher-level compression may be the only optimisation layer, making raw asset size critical for end-user performance.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**
+ui.frontend/src/**
+```
+
+#### Detect — Bad Pattern
+- Single clientlib JS file > 100 KB
+- jQuery or Moment.js included when AEM's Granite already provides them via `dependencies`
+- Full library imports (`import _ from 'lodash'`) instead of named cherry-picks (`import debounce from 'lodash/debounce'`)
+- Multiple clientlib categories with identical `dependencies` entries (duplicated delivery)
+- `js.txt` listing 30+ individual component files (no bundling)
+
+#### Detect — Good Pattern
+- `ui.frontend` webpack / Parcel build producing tree-shaken, minified output
+- Shared libraries declared in `dependencies` (served once by AEM HTML Library Manager) not `embed`
+- Code split by page type: base bundle + per-component optional categories
+- `js.txt` referencing the webpack output bundle, not raw source files
+
+#### Bad Example
+```
+# js.txt — raw sources, no bundling, no minification
+jquery-3.6.0.js          ← already provided by Granite
+lodash.full.js            ← 70KB, mostly unused
+moment-with-locales.js    ← 170KB, rarely needed
+app.js
+components/header.js
+components/footer.js
+... 40 more component files ...
+```
+
+#### Good Example
+```
+# js.txt — single webpack output
+#base
+mysite.bundle.min.js
+
+# Component categories loaded on demand:
+# mysite.carousel  → carousel/js.txt → carousel.bundle.min.js
+# mysite.form      → form/js.txt     → form.bundle.min.js
+```
+
+```xml
+<!-- Declare Granite jQuery as a dependency — not embedded -->
+<jcr:root jcr:primaryType="cq:ClientLibraryFolder"
+    allowProxy="{Boolean}true"
+    categories="[mysite.base]"
+    dependencies="[granite.jquery]"/>
+```
+
+#### False Positives
+- Admin/authoring clientlibs loaded only in edit mode (not served to end users)
+- Minified third-party bundles where the minified size is already within budget
+
+#### Related Rules
+- `AEMAMS-PERF-008` (missing allowProxy — must be fixed alongside size issues)
+- `AEMAMS-PERF-011` (category proliferation — common companion to oversized bundles)
+
+---
+
+### AEMAMS-PERF-008: Missing `allowProxy` on Client Libraries
+
+- **Severity**: High
+- **Description**: Client libraries under `/apps` must declare `allowProxy="{Boolean}true"` to be served via the `/etc.clientlibs` proxy path. AMS Dispatcher configurations typically deny direct access to `/apps`; without `allowProxy`, clientlibs return 403/404 in production while working locally in CRX.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**/.content.xml
+ui.apps/src/main/content/jcr_root/apps/**/clientlib*/**/.content.xml
+```
+
+#### Detect — Bad Pattern
+```regex
+jcr:primaryType\s*=\s*["']cq:ClientLibraryFolder["'](?![\s\S]{0,200}allowProxy)
+```
+- `.content.xml` with `jcr:primaryType="cq:ClientLibraryFolder"` missing `allowProxy="{Boolean}true"`
+
+#### Detect — Good Pattern
+- Every `cq:ClientLibraryFolder` under `/apps` has `allowProxy="{Boolean}true"`
+- Dispatcher filter allows `/etc.clientlibs/*` while denying `/apps/*`
+
+#### Bad Example
+```xml
+<!-- Will serve on author (no Dispatcher) but 403 on publish (Dispatcher blocks /apps) -->
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    jcr:primaryType="cq:ClientLibraryFolder"
+    categories="[mysite.base]"/>
+```
+
+#### Good Example
+```xml
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    jcr:primaryType="cq:ClientLibraryFolder"
+    allowProxy="{Boolean}true"
+    categories="[mysite.base]"/>
+```
+
+#### False Positives
+- Clientlibs under `/etc/clientlibs/` (no proxy needed — already on a Dispatcher-safe path)
+- Author-only clientlibs for custom authoring UI widgets (never proxied to publish Dispatcher)
+
+#### Related Rules
+- `AEMAMS-PERF-007` (clientlib size — review both during clientlib audit)
+- `AEMAMS-SEC-002` (Dispatcher filters — `/etc.clientlibs/*` must be explicitly allowed)
+
+---
+
+### AEMAMS-PERF-009: Render-Blocking Client Library Loading
+
+- **Severity**: Medium
+- **Description**: JavaScript clientlibs included in the `<head>` without `defer` or `async` block HTML parsing and delay First Contentful Paint. On AMS, where Dispatcher serves assets without a CDN push cache warming, render-blocking resources are especially harmful for mobile users and slow connections.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/page/**/*.html
+ui.apps/src/main/content/jcr_root/apps/**/components/structure/**/*.html
+ui.frontend/src/**/*.html
+```
+
+#### Detect — Bad Pattern
+```regex
+data-sly-call.*clientlib\.js.*categories.*(?!loading\s*=\s*['"]defer|async['"])
+```
+- `data-sly-call="${clientlib.js @ categories='...'}"` inside `<head>` without `loading='defer'`
+- `<script src="...">` without `defer` or `async` in the page `<head>` HTL
+- `clientlib.all` called in `<head>` loading both CSS and JS synchronously
+
+#### Detect — Good Pattern
+- CSS clientlibs in `<head>`; JS clientlibs loaded with `loading='defer'` or placed before `</body>`
+- `com.adobe.granite.ui.clientlibs.impl.HtmlLibraryManagerImpl` configured with `minify=true` and `gzip=true`
+- `<link rel="preload" as="script">` for critical JS bundles combined with `defer` attribute
+
+#### Bad Example
+```html
+<!-- headlibs.html — synchronous JS blocks HTML parsing -->
+<head>
+    <sly data-sly-call="${clientlib.css @ categories='mysite.all'}"/>
+    <sly data-sly-call="${clientlib.js  @ categories='mysite.all'}"/>
+</head>
+```
+
+#### Good Example
+```html
+<!-- CSS in <head>, JS deferred before </body> -->
+<head>
+    <sly data-sly-call="${clientlib.css @ categories='mysite.all'}"/>
+</head>
+<body>
+    <!-- page content renders immediately -->
+    <sly data-sly-call="${clientlib.js @ categories='mysite.all', loading='defer'}"/>
+</body>
+```
+
+#### False Positives
+- Analytics/tag manager scripts contractually requiring synchronous `<head>` placement (document the exception)
+- Polyfill loader scripts that must run before any other script
+
+#### Related Rules
+- `AEMAMS-PERF-007` (clientlib size — large bundles amplify render-blocking cost)
+- `AEMAMS-PERF-010` (inline scripts — compound render-blocking problem)
+
+---
+
+### AEMAMS-PERF-010: Inline Scripts and Styles in HTL Components
+
+- **Severity**: Medium
+- **Description**: `<style>` blocks and executable `<script>` blocks embedded directly in HTL templates are not browser-cached, inflate HTML payload on every request, and require `unsafe-inline` in Content Security Policy (CSP). On AMS with Dispatcher caching, dynamic inline styles also invalidate HTML cache entries unnecessarily.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/*.html
+ui.apps/src/main/content/jcr_root/apps/**/*.htl
+```
+
+#### Detect — Bad Pattern
+```regex
+<style[\s>](?!.*data-sly-test.*false)
+<script(?!\s+src=)(?!.*type\s*=\s*["']application/ld\+json["'])[\s>]
+style\s*=\s*["'][^"']*\$\{
+```
+
+#### Detect — Good Pattern
+- Component-specific CSS compiled into a scoped clientlib category loaded only when the component is used
+- Dynamic values passed via `data-*` attributes; clientlib JS reads and applies them
+- `application/ld+json` is the only acceptable inline `<script>` type
+
+#### Bad Example
+```html
+<!-- hero.html — inline style with authored value: not cacheable, forces CSP unsafe-inline -->
+<style>
+    .hero { background-color: ${properties.bgColor}; }
+</style>
+
+<!-- Inline JS config object: same problems -->
+<script>
+    window.pageConfig = {
+        locale: '${currentPage.language}',
+        env:    '${wcmMode.edit ? "edit" : "publish"}'
+    };
+</script>
+```
+
+#### Good Example
+```html
+<!-- Pass authored values as data attributes; no inline block needed -->
+<section class="hero"
+         data-bg-color="${properties.bgColor @ context='attribute'}"
+         data-locale="${currentPage.language}">
+</section>
+<!-- clientlib JS reads data-bg-color and sets style at runtime -->
+
+<!-- Structured data only: acceptable inline script -->
+<script type="application/ld+json">${component.structuredData @ context='unsafe'}</script>
+```
+
+#### False Positives
+- `application/ld+json` structured data (not executable JavaScript)
+- `<style>` blocks in HTL used exclusively in email templates (no CSP or Dispatcher caching applies)
+
+#### Related Rules
+- `AEMAMS-PERF-009` (render-blocking — inline scripts compound blocking)
+- `AEMAMS-SEC-003` (XSS — `context='unsafe'` required for inline HTML)
+
+---
+
+### AEMAMS-PERF-011: Client Library Category Proliferation
+
+- **Severity**: Medium
+- **Description**: Loading more than ~8 distinct clientlib categories on every page creates multiple HTTP requests that cannot be multiplexed in HTTP/1.1 connections (still common in AMS environments behind older Dispatcher or CDN configs). It also increases HTML Library Manager compilation time and complicates cache invalidation.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**/.content.xml
+```
+
+#### Detect — Bad Pattern
+- More than 8 `cq:ClientLibraryFolder` nodes under `/apps/mysite/clientlibs/`, each with a unique category, all embedded unconditionally in the page template
+- Page template `customheaderlibs.html` / `customfooterlibs.html` referencing more than 8 separate categories
+- Every component declaring its own unique category loaded globally (not on-demand)
+
+#### Detect — Good Pattern
+- `mysite.base` — all page-invariant CSS/JS compiled into a single bundle
+- Per-component categories (`mysite.carousel`) declared in the component's own `.content.xml` and activated via AEM template policies (loaded only on pages using the component)
+- `dependencies` used for shared AEM platform libraries (Granite, CoralUI) — never `embed`
+
+#### Bad Example
+```
+# customheaderlibs.html loads all 10 categories unconditionally on every page:
+mysite.reset, mysite.typography, mysite.grid, mysite.header,
+mysite.footer, mysite.nav, mysite.hero, mysite.teaser,
+mysite.search, mysite.utility
+→ 10 separate CSS and JS requests per page
+```
+
+#### Good Example
+```
+# Page template loads only the consolidated base
+mysite.base                ← one CSS + one JS request per page
+
+# Carousel component's .content.xml:
+#   categories="[mysite.carousel]"
+# Template editor adds mysite.carousel to page policy only for pages with carousels
+```
+
+#### False Positives
+- Intentionally distinct page-type bundles (homepage bundle vs article bundle vs product bundle) — this is correct code-splitting, not proliferation
+- Authoring clientlibs categorised separately from publish clientlibs (edit-mode only, never served through Dispatcher)
+
+#### Related Rules
+- `AEMAMS-PERF-007` (clientlib size — proliferation and large bundles compound each other)
+- `AEMAMS-PERF-009` (render-blocking — more categories = more blocking requests in HTTP/1.1)
+
+---
+
 ## Security Rules
 
 ---

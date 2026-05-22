@@ -911,6 +911,222 @@ app.js
 
 ---
 
+### AEMCS-PERF-005: Missing `allowProxy` on Client Libraries
+
+- **Severity**: High
+- **Description**: Client libraries under `/apps` must declare `allowProxy="{Boolean}true"` to be served through the `/etc.clientlibs` Dispatcher-safe proxy path. Cloud Service's Dispatcher blocks all direct `/apps` requests; without `allowProxy`, clientlibs return 404 in production even though they load fine on the local SDK.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**/.content.xml
+ui.apps/src/main/content/jcr_root/apps/**/clientlib*/**/.content.xml
+```
+
+#### Detect — Bad Pattern
+```regex
+jcr:primaryType\s*=\s*["']cq:ClientLibraryFolder["'](?![\s\S]{0,200}allowProxy)
+```
+- `.content.xml` with `jcr:primaryType="cq:ClientLibraryFolder"` missing `allowProxy="{Boolean}true"`
+
+#### Detect — Good Pattern
+- Every `cq:ClientLibraryFolder` node under `/apps` has `allowProxy="{Boolean}true"`
+- Page templates reference clientlibs via `/etc.clientlibs/` URLs (not `/apps/`)
+
+#### Bad Example
+```xml
+<!-- ui.apps/.../clientlibs/mysite/.content.xml — will 404 in production -->
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    jcr:primaryType="cq:ClientLibraryFolder"
+    categories="[mysite.base]"
+    dependencies="[granite.jquery]"/>
+```
+
+#### Good Example
+```xml
+<!-- allowProxy routes requests through /etc.clientlibs/ — safe through Dispatcher -->
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    jcr:primaryType="cq:ClientLibraryFolder"
+    allowProxy="{Boolean}true"
+    categories="[mysite.base]"
+    dependencies="[granite.jquery]"/>
+```
+
+#### False Positives
+- Clientlibs under `/etc/clientlibs/` (not under `/apps` — no proxy needed)
+- Authoring-only clientlibs loaded in edit context inside the AEM UI (not served through Dispatcher to end users)
+
+#### Related Rules
+- `AEMCS-PERF-004` (clientlib size — pair with allowProxy check when reviewing clientlibs)
+- `AEMCS-SEC-002` (Dispatcher rules — `/etc.clientlibs/*` allow rule must be present)
+
+---
+
+### AEMCS-PERF-006: Render-Blocking Client Library Loading
+
+- **Severity**: Medium
+- **Description**: JavaScript clientlibs included in the `<head>` without `defer` or `async` block HTML parsing and delay First Contentful Paint (FCP). Cloud Service measures Core Web Vitals; render-blocking resources directly lower Lighthouse scores and affect CDN caching strategy signals.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/page/**/*.html
+ui.apps/src/main/content/jcr_root/apps/**/components/structure/**/*.html
+ui.frontend/src/**/*.html
+```
+
+#### Detect — Bad Pattern
+```regex
+data-sly-call.*clientlib\.js.*categories.*(?!loading\s*=\s*['"]defer|async['"])
+```
+- `data-sly-call="${clientlib.js @ categories='...'}"` inside `<head>` without `loading='defer'`
+- `<script src="...">` (non-module, no defer/async) in page component head HTL
+- `clientlib.all` loaded in `<head>` without a deferred loading strategy
+
+#### Detect — Good Pattern
+- JS clientlibs loaded with `loading='defer'` or placed immediately before `</body>`
+- Critical CSS inlined only for above-the-fold styles; remaining CSS loaded asynchronously
+- `<link rel="preload">` for key resources combined with deferred full load
+
+#### Bad Example
+```html
+<!-- page/customheaderlibs.html — render-blocking JS in <head> -->
+<head>
+    <sly data-sly-call="${clientlib.css @ categories='mysite.all'}"/>
+    <sly data-sly-call="${clientlib.js  @ categories='mysite.all'}"/>
+    <!-- JS blocks parsing of everything after it -->
+</head>
+```
+
+#### Good Example
+```html
+<!-- CSS in <head> (render-critical), JS deferred -->
+<head>
+    <sly data-sly-call="${clientlib.css @ categories='mysite.all'}"/>
+</head>
+<body>
+    <!-- page content -->
+    <sly data-sly-call="${clientlib.js @ categories='mysite.all', loading='defer'}"/>
+</body>
+```
+
+#### False Positives
+- Small inline scripts that set global config vars before DOM parse (must be genuinely tiny and justified)
+- Third-party tag manager snippets that contractually require synchronous `<head>` loading
+
+#### Related Rules
+- `AEMCS-PERF-004` (clientlib size — large bundles make render-blocking worse)
+- `AEMCS-PERF-007` (inline scripts — related anti-pattern)
+
+---
+
+### AEMCS-PERF-007: Inline Scripts and Styles in HTL Components
+
+- **Severity**: Medium
+- **Description**: `<style>` blocks and `<script>` blocks embedded directly in HTL component markup are not cached by the CDN or browser, inflate per-request HTML payload, and require `unsafe-inline` in Content Security Policy (CSP) — a significant XSS risk. Cloud Service CDN caches HTML aggressively; inline dynamic styles break cache efficacy.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/*.html
+ui.apps/src/main/content/jcr_root/apps/**/*.htl
+```
+
+#### Detect — Bad Pattern
+```regex
+<style[\s>](?!.*data-sly-test.*false)
+<script(?!\s+src=)(?!.*type\s*=\s*["']application/ld\+json["'])[\s>]
+style\s*=\s*["'][^"']*\$\{
+```
+
+#### Detect — Good Pattern
+- Component-specific styles compiled into a category clientlib loaded only on pages using that component
+- Dynamic values passed via `data-*` attributes; clientlib JS reads them
+- Structured data (`application/ld+json`) is the only acceptable inline `<script>` type
+
+#### Bad Example
+```html
+<!-- hero.html — inline style with dynamic value, not CDN-cacheable -->
+<style>
+    .hero-${properties.variantClass} {
+        background-image: url('${properties.bgImage @ context="uri"}');
+    }
+</style>
+
+<!-- Inline config script — forces CSP unsafe-inline -->
+<script>
+    window.siteConfig = { theme: '${properties.theme}', locale: '${currentPage.language}' };
+</script>
+```
+
+#### Good Example
+```html
+<!-- Pass dynamic values via data attributes; no inline scripts/styles needed -->
+<div class="hero hero--${properties.variantClass @ context='attribute'}"
+     data-bg="${properties.bgImage @ context='uri'}"
+     data-theme="${properties.theme @ context='attribute'}"
+     data-locale="${currentPage.language}">
+    <!-- clientlib JS reads data-* and applies styles -->
+</div>
+
+<!-- Structured data is the only valid inline script -->
+<script type="application/ld+json">${component.jsonLd @ context='unsafe'}</script>
+```
+
+#### False Positives
+- `application/ld+json` structured data scripts (search engine metadata, not executable)
+- AEM component development overlays in `/libs` that are read-only
+
+#### Related Rules
+- `AEMCS-PERF-006` (render-blocking loading — inline scripts compound the problem)
+- `AEMCS-SEC-003` (XSS — `context='unsafe'` required for inline HTML violates CSP)
+
+---
+
+### AEMCS-PERF-008: Client Library Category Proliferation
+
+- **Severity**: Medium
+- **Description**: Defining more than ~8 distinct clientlib categories all loaded on every page creates unnecessary HTTP round-trips (significant pre-HTTP/2) and inflates cache key complexity. The pattern also makes dependency auditing harder and commonly leads to duplicate library code across categories.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**/.content.xml
+ui.frontend/src/**
+```
+
+#### Detect — Bad Pattern
+- More than 8 `cq:ClientLibraryFolder` nodes each with a unique category, all embedded unconditionally in the page template head
+- `data-sly-call="${clientlib.css @ categories=['c1','c2','c3','c4','c5','c6','c7','c8','c9']}"` — 9+ explicit categories per page
+- Each component has its own category loaded globally instead of conditionally
+
+#### Detect — Good Pattern
+- `mysite.base` — single bundle with all code required on every page
+- Component-specific categories (`mysite.carousel`, `mysite.form`) loaded only by the component's HTL via `data-sly-use` or template policy clientlibs
+- `ui.frontend` webpack build consolidates entry points into ≤ 3 output bundles per page type
+
+#### Bad Example
+```
+# Page template loads ALL of these unconditionally — 9 separate requests
+mysite.header, mysite.footer, mysite.nav, mysite.hero,
+mysite.teaser, mysite.carousel, mysite.form, mysite.search, mysite.utility
+```
+
+#### Good Example
+```
+# Page template loads only the base bundle
+mysite.base          ← compiled from ui.frontend webpack, all shared code
+
+# Each component's .content.xml declares its own category:
+#   carousel/.content.xml  → categories="[mysite.carousel]"
+# AEM policy editor adds mysite.carousel to pages that use carousel — on demand only
+```
+
+#### False Positives
+- Sites with genuinely distinct page types (home, article, product) each loading a type-specific bundle — per-page-type bundles are correct code splitting, not proliferation
+
+#### Related Rules
+- `AEMCS-PERF-004` (clientlib size — proliferation and large size often co-occur)
+- `AEMCS-PERF-006` (render-blocking — more categories = more blocking requests)
+
+---
+
 ## Security Rules
 
 ---
