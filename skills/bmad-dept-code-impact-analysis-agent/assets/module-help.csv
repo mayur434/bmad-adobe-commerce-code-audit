@@ -1,0 +1,4 @@
+code,name,action,description,agent,platform,tier,mode,keywords,example_prompt,output,status,notes
+ia,Impact Analysis,analyze,"Analyze change impact and blast radius",bmad-dept-code-impact-analysis-agent,all,1,scanner,"impact,blast radius,what breaks","analyze impact of this change",Markdown,scaffolded,Tier 1 scanner
+ia,Impact Analysis,trace,"Trace dependency chains for a class/module",bmad-dept-code-impact-analysis-agent,all,1,scanner,"trace,dependency chain","trace dependencies for CartService",JSON + Markdown,scaffolded,Tier 1 scanner
+ia,Impact Analysis,upgrade-risk,"Assess upgrade risk between versions",bmad-dept-code-impact-analysis-agent,all,both,combined,"upgrade risk,breaking changes,patch risk","assess upgrade risk from 2.4.6 to 2.4.7",Markdown,scaffolded,Combined

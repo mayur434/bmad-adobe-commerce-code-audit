@@ -1,0 +1,4 @@
+code,name,action,description,agent,platform,tier,mode,keywords,example_prompt,output,status,notes
+sc,Scan,scan,"Fast static analysis scan",bmad-dept-code-scan-agent,all,1,scanner,"scan,static analysis,violations","scan my project code",Excel + JSON,scaffolded,Tier 1 scanner
+sc,Scan,scan-quick,"Quick scan mode (subset of rules)",bmad-dept-code-scan-agent,all,1,scanner,"quick scan,fast scan","check code quality quickly",Excel + JSON,scaffolded,Tier 1 fast mode
+sc,Scan,list-engines,"List available scan engines",bmad-dept-code-scan-agent,all,1,utility,"list engines","list scan engines",Console,scaffolded,Utility
