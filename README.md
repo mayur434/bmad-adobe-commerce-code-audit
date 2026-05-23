@@ -110,32 +110,41 @@ The BMAD installer (`npx bmad-method install`) reads our `module.yaml` + `market
 
 ```
 bmad-dept-code-agent/                  ← This repository (the custom module)
-├── README.md                          ← You are here
-├── MANUAL.md                          ← Operational guide
-├── PROMPTS.md                         ← Full prompt reference
+├── README.md
+├── MANUAL.md
+├── PROMPTS.md
 └── skills/
     ├── module.yaml                    ← Module manifest (agents list, config vars)
     ├── module-help.csv                ← Menu/capability registry
-    │
-    └── bmad-dept-code-<agent>/        ← Each agent follows this structure ↓
-        ├── SKILL.md                   ← AI instructions (activation, workflow, modes)
-        ├── GUIDE.md                   ← Human instructions (setup, examples)
-        ├── customize.toml             ← Activation keywords, commands, scripts
-        ├── assets/                    ← Module registry (module-help.csv, module.yaml)
-        ├── resources/                 ← Knowledge base (rule packs, strategies)
-        ├── templates/                 ← Output templates (report-json.md, report-markdown.md)
-        └── scripts/                   ← TypeScript Tier 1 engine
-            ├── run.ts                 ← CLI dispatcher (entry point)
-            ├── package.json           ← Node.js dependencies
-            ├── tsconfig.json          ← TypeScript config
-            ├── shared/
-            │   └── base.ts            ← Abstract base class / shared interfaces
-            └── engines/
-                ├── registry.ts        ← Platform auto-detection + engine resolution
-                ├── commerce/          ← Adobe Commerce engine (✅ implemented in Audit)
-                ├── aem/               ← AEMaaCS engine (🔲 placeholder)
-                ├── eds/               ← EDS engine (🔲 placeholder)
-                └── eds_commerce/      ← EDS+Commerce hybrid (🔲 placeholder)
+    ├── bmad-dept-code-audit-agent/
+    ├── bmad-dept-code-generation-agent/
+    ├── bmad-dept-code-test-coverage-agent/
+    ├── bmad-dept-code-impact-analysis-agent/
+    └── bmad-dept-code-scan-agent/
+```
+
+Each agent folder follows the same structure:
+
+```
+bmad-dept-code-*-agent/
+├── SKILL.md                   ← AI instructions (activation, workflow, modes)
+├── GUIDE.md                   ← Human instructions (setup, examples)
+├── customize.toml             ← Activation keywords, commands, scripts
+├── assets/                    ← Module registry (module-help.csv, module.yaml)
+├── resources/                 ← Knowledge base (rule packs, strategies)
+├── templates/                 ← Output templates (JSON, Markdown)
+└── scripts/
+    ├── run.ts                 ← CLI dispatcher (entry point)
+    ├── package.json           ← Node.js dependencies
+    ├── tsconfig.json          ← TypeScript config
+    ├── shared/
+    │   └── base.ts            ← Abstract base class / shared interfaces
+    └── engines/
+        ├── registry.ts        ← Platform auto-detection + engine resolution
+        ├── commerce/          ← Adobe Commerce engine (✅ in Audit)
+        ├── aem/               ← AEMaaCS engine (🔲 placeholder)
+        ├── eds/               ← EDS engine (🔲 placeholder)
+        └── eds_commerce/      ← EDS+Commerce hybrid (🔲 placeholder)
 ```
 
 #### File Roles Explained
