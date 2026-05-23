@@ -1,0 +1,5 @@
+code,name,action,description,agent,platform,tier,mode,keywords,example_prompt,output,status,notes
+tca,Test Coverage,analyze,"Analyze test coverage gaps",bmad-dept-code-test-coverage-agent,all,1,scanner,"test coverage,coverage gaps,untested code","analyze test coverage",Excel + JSON,implemented,Tier 1 scanner
+tca,Test Coverage,generate,"Generate missing tests via LLM",bmad-dept-code-test-coverage-agent,all,2,llm,"generate tests,unit test,create tests","generate tests for the Checkout module",Test files,implemented,Tier 2 LLM
+tca,Test Coverage,full,"Analyze gaps then generate tests",bmad-dept-code-test-coverage-agent,all,both,combined,"full test coverage,complete coverage","full test coverage",Excel + Tests,implemented,Combined
+tca,Test Coverage,plan,"Create prioritized test plan",bmad-dept-code-test-coverage-agent,all,1,scanner,"test plan,coverage plan","create test plan",Markdown,implemented,Analysis output

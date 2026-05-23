@@ -1,7 +1,7 @@
 code: dca
 name: "BMAD DEPT Code Agent"
 header: "BMAD DEPT Code Agent: Multi-agent AI suite for Adobe platforms"
-subheader: "Code audit, generation, impact analysis, and scanning for Commerce, AEM, EDS"
+subheader: "Code audit, generation, test coverage, impact analysis, and scanning for Commerce, AEM, EDS"
 description: "Multi-agent AI suite for Commerce, AEMaaCS, EDS, and hybrid projects"
 default_selected: false
 recommendedModules: [bmm]
@@ -34,6 +34,13 @@ agents:
     title: Code Impact Analysis Specialist
     icon: "💥"
     description: "Code impact analysis for Commerce, AEMaaCS, and EDS projects. Evaluates blast radius, traces dependency chains, assesses risk for changes, upgrades, and patches."
+    team: software-development
+
+  - code: bmad-dept-code-test-coverage-agent
+    name: Test Coverage
+    title: Test Coverage Specialist
+    icon: "🧪"
+    description: "Two-tier test coverage agent. Tier 1: deterministic coverage gap analysis (scanner). Tier 2: LLM-driven test generation following platform-specific patterns (PHPUnit, JUnit, Mocha/Jest)."
     team: software-development
 
 # Configuration variables

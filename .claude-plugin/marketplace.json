@@ -16,7 +16,8 @@
         "./skills/bmad-dept-code-audit-agent",
         "./skills/bmad-dept-code-scan-agent",
         "./skills/bmad-dept-code-generation-agent",
-        "./skills/bmad-dept-code-impact-analysis-agent"
+        "./skills/bmad-dept-code-impact-analysis-agent",
+        "./skills/bmad-dept-code-test-coverage-agent"
       ]
     }
   ]

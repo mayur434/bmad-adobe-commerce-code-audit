@@ -1,0 +1,28 @@
+[skill]
+name = "bmad-dept-code-test-coverage-agent"
+description = "Test coverage analyzer and generator for Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic coverage analysis via TypeScript scanner (gap detection, coverage mapping). Tier 2: LLM-driven test generation (unit, integration, functional tests following platform patterns)."
+version = "1.0.0"
+
+[skill.tools]
+required = ["claude-code"]
+
+[skill.activation]
+keywords = ["test coverage", "unit test", "integration test", "test generation", "coverage report", "missing tests", "test gap", "generate tests", "test plan"]
+
+[skill.scripts]
+dispatcher = "scripts/run.ts"
+package = "scripts/package.json"
+
+[skill.commands]
+# Tier 1: Analyze existing test coverage (auto-detects platform)
+analyze = "npx ts-node scripts/run.ts --mode analyze"
+# Tier 1 with explicit engine
+analyze-commerce = "npx ts-node scripts/run.ts --mode analyze --engine commerce"
+analyze-aem = "npx ts-node scripts/run.ts --mode analyze --engine aem"
+analyze-eds = "npx ts-node scripts/run.ts --mode analyze --engine eds"
+# Tier 2: LLM generates tests for uncovered code
+generate = "skill"
+# Combined: analyze gaps then generate missing tests
+full = "analyze+skill"
+# Utility
+list-engines = "npx ts-node scripts/run.ts --list-engines"
