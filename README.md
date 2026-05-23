@@ -41,70 +41,120 @@ A multi-agent AI suite purpose-built for **Adobe platform** projects — Commerc
 ### Module Architecture
 
 ```mermaid
-graph LR
-    subgraph BMAD["BMAD Framework"]
-        CLI["npx bmad-method install"]
-        Core["Core Module"]
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#2196F3', 'secondaryColor': '#fff3e0', 'tertiaryColor': '#e8f5e9' } } }%%
+flowchart TD
+
+%% ─── INSTALL LAYER ────────────────────────────────────────────
+    subgraph install ["① INSTALL"]
+        direction LR
+        CLI["<b>npx bmad-method install</b><br/><i>--custom-source flag</i>"]
+        Manifest["module.yaml + marketplace.json"]
+        CLI -->|registers| Manifest
     end
 
-    CLI -->|installs| Module
-    Core -->|required by| Module
-
-    subgraph Module["bmad-dept-code-agent (dca)"]
-        Manifest["module.yaml\nmarketplace.json"]
-
-        Manifest --> Audit
-        Manifest --> Gen
-        Manifest --> TestCov
-        Manifest --> Impact
-        Manifest --> Scan
-
-        Audit["🔍 Audit"]
-        Gen["⚡ Code Generation"]
-        TestCov["🧪 Test Coverage"]
-        Impact["💥 Impact Analysis"]
-        Scan["📡 Scan"]
-    end
-
-    subgraph Engines["Tier 1 — TypeScript Engines"]
-        CommerceE["commerce ✅"]
-        AemE["aem 🔲"]
-        EdsE["eds 🔲"]
-        EdsComE["eds-commerce 🔲"]
-    end
-
-    subgraph LLMLayer["Tier 2 — LLM Skills"]
-        RulePacks["Rule Packs"]
-        MCPServers["MCP Servers"]
-        Detection["Detection Strategy"]
-    end
-
-    Audit --> CommerceE
-    TestCov --> Engines
-    Impact --> Engines
-    Scan --> Engines
-
-    Audit --> RulePacks
-    Gen --> MCPServers
-    Gen --> Detection
-    TestCov --> LLMLayer
-    Impact --> LLMLayer
-    Scan --> LLMLayer
-
-    subgraph Output["Your Project"]
+%% ─── DEPLOY LAYER ────────────────────────────────────────────
+    subgraph deploy ["② DEPLOY → Your Project"]
+        direction LR
         Skills[".claude/skills/"]
-        Reports["Reports\n(Excel / JSON / MD)"]
-        Code["Generated Code\n+ Tests"]
+        Env[".env config"]
     end
 
-    Module -->|deployed into| Skills
-    Engines --> Reports
-    LLMLayer --> Reports
-    LLMLayer --> Code
-    MCPServers --> Code
+    Manifest -->|"deploys into"| Skills
+
+%% ─── SDLC AGENTS (left → right in dev lifecycle order) ──────
+    subgraph sdlc ["③ SDLC AGENTS — bmad-dept-code-agent (dca)"]
+        direction LR
+
+        subgraph gen ["⚡ Code Generation"]
+            G1["Scaffold modules"]
+            G2["Generate components"]
+            G3["Create configs"]
+        end
+
+        subgraph scan ["📡 Scan"]
+            S1["Static analysis"]
+            S2["Pattern matching"]
+            S3["Quick violations"]
+        end
+
+        subgraph audit ["🔍 Audit"]
+            A1["Deep code audit"]
+            A2["BRD compliance"]
+            A3["DB + patch analysis"]
+        end
+
+        subgraph testcov ["🧪 Test Coverage"]
+            T1["Analyze gaps"]
+            T2["Generate tests"]
+            T3["Coverage reports"]
+        end
+
+        subgraph impact ["💥 Impact Analysis"]
+            I1["Change blast radius"]
+            I2["Upgrade risk"]
+            I3["Dependency trace"]
+        end
+
+        gen --> scan --> audit --> testcov --> impact
+    end
+
+    Skills --> sdlc
+
+%% ─── EXECUTION TIERS ─────────────────────────────────────────
+    subgraph tier1 ["TIER 1 — TypeScript Deterministic Engines"]
+        direction LR
+        Commerce["commerce ✅"]
+        AEM["aem 🔲"]
+        EDS["eds 🔲"]
+        EDSCom["eds-commerce 🔲"]
+    end
+
+    subgraph tier2 ["TIER 2 — LLM Skills & Resources"]
+        direction LR
+        RulePacks["Rule Packs<br/><i>per-platform rules</i>"]
+        MCPServers["MCP Servers<br/><i>code generation</i>"]
+        Detection["Detection Strategy<br/><i>confidence scoring</i>"]
+    end
+
+    scan --> tier1
+    audit --> tier1
+    testcov --> tier1
+    impact --> tier1
+
+    gen --> tier2
+    audit --> tier2
+    testcov --> tier2
+    impact --> tier2
+
+%% ─── OUTPUT LAYER ────────────────────────────────────────────
+    subgraph output ["④ OUTPUT"]
+        direction LR
+        Reports["📊 Reports<br/><i>Excel / JSON / Markdown</i>"]
+        GenCode["📁 Generated Code + Tests"]
+        Findings["📋 Findings & Fix Plans"]
+    end
+
+    tier1 --> Reports
+    tier1 --> Findings
+    tier2 --> GenCode
+    tier2 --> Reports
+
+%% ─── STYLES ──────────────────────────────────────────────────
+    style install fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style deploy fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style sdlc fill:#fffde7,stroke:#f9a825,stroke-width:2px
+    style tier1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style tier2 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style output fill:#fce4ec,stroke:#c62828,stroke-width:2px
+
+    style gen fill:#e1f5fe,stroke:#0288d1
+    style scan fill:#e0f2f1,stroke:#00695c
+    style audit fill:#fff8e1,stroke:#ff8f00
+    style testcov fill:#f1f8e9,stroke:#558b2f
+    style impact fill:#fbe9e7,stroke:#d84315
 ```
 
-> Every agent follows the same **Tier 1 (TypeScript Scanner) + Tier 2 (LLM Skills)** dual-engine pattern. Gray/🔲 items are scaffolded and coming next — the Commerce engine is the working benchmark.
+> **Reading the diagram:** Follow the numbered layers ① → ④. Agents are ordered left-to-right in SDLC sequence: you **generate** code first, **scan** for quick violations, **audit** in depth, verify **test coverage**, then assess **impact** of changes. Each agent uses Tier 1 (deterministic TypeScript scanners) + Tier 2 (LLM-powered skills). The Commerce engine is fully implemented; other platforms are scaffolded (🔲).
 
 ---
 
