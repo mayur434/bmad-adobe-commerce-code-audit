@@ -8,7 +8,7 @@ A step-by-step guide for team members to build a new BMAD custom module from scr
 
 A BMAD custom module is a self-contained skill package that extends the BMAD agent system. It lives in its own repo and gets installed into any project via `npx bmad-method install --custom-source`.
 
-**What we built as reference:** `adobe-agent-code-audit` — a two-tier code auditor with a Python scanner + LLM deep analysis.
+**What we built as reference:** `bmad-code-audit-agent` — a two-tier code auditor with a Python scanner + LLM deep analysis.
 
 ---
 
@@ -370,9 +370,9 @@ The agent runs this silently before any operation.
 | Item | Convention | Example |
 |------|-----------|---------|
 | Repo name | `bmad-<purpose>` | `bmad-code-audit` |
-| Skill folder | `<org>-agent-<purpose>` | `adobe-agent-code-audit` |
+| Skill folder | `bmad-<purpose>-agent` | `bmad-code-audit-agent` |
 | Module code | 2-4 char abbreviation | `aca` |
-| Agent code | `bmad-<role>` | `bmad-code-auditor` |
+| Agent code | `bmad-<purpose>-agent` | `bmad-code-audit-agent` |
 | Engine dirs | lowercase, underscores | `eds_commerce` |
 | Engine IDs | lowercase, hyphens | `eds-commerce` |
 

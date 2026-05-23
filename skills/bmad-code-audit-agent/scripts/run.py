@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Adobe Code Audit — Unified Dispatcher
+BMAD Code Audit — Unified Dispatcher
 =======================================
 Single entry point for all platform-specific audit engines.
 
@@ -32,7 +32,7 @@ from engines.registry import detect_platform, get_engine, list_engines
 def main():
     # Parse only the dispatcher-level args; rest gets forwarded to the engine
     parser = argparse.ArgumentParser(
-        description="Adobe Code Audit — Unified Dispatcher",
+        description="BMAD Code Audit — Unified Dispatcher",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
     )

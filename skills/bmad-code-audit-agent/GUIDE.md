@@ -1,6 +1,6 @@
-# Adobe Code Audit — BMAD Custom Module
+# BMAD Code Audit — Custom Module
 
-Two-tier code audit system for Adobe ecosystem projects.
+Two-tier code audit system for enterprise projects.
 
 ---
 
@@ -11,12 +11,12 @@ Two-tier code audit system for Adobe ecosystem projects.
 - Node.js v20.12+
 - Python 3.10+
 - pip (for `openpyxl`, `python-docx`)
-- BMAD already initiated on your Adobe Commerce project
+- BMAD already initiated on your project
 
 ### Step 1: Install BMAD with this custom module
 
 ```bash
-cd /path/to/your/adobe-commerce-project
+cd /path/to/your/project
 
 npx bmad-method install \
   --directory . \
@@ -29,12 +29,12 @@ npx bmad-method install \
 > Replace `~/bmad-modules/adobe-code-audit` with the actual path to this repo.
 > Or use a Git URL: `--custom-source https://github.com/your-org/bmad-code-audit.git`
 
-After install, the skill lives at `.claude/skills/adobe-agent-code-audit/`.
+After install, the skill lives at `.claude/skills/bmad-code-audit-agent/`.
 
 ### Step 2: Install Python dependencies
 
 ```bash
-pip install -r .claude/skills/adobe-agent-code-audit/scripts/requirements.txt
+pip install -r .claude/skills/bmad-code-audit-agent/scripts/requirements.txt
 ```
 
 This installs: `openpyxl` (Excel reports), `python-docx` (BRD .docx parsing).
@@ -54,26 +54,26 @@ The agent will use the SKILL.md instructions to run the Python scanner (Tier 1) 
 
 ```bash
 # Auto-detect platform
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --path .
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path .
 
 # Explicit engine + name
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --path . --engine commerce --name "My Project"
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce --name "My Project"
 
 # Full audit: code + DB + BRD + patch
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --path . --engine commerce \
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce \
   --db /path/to/dump.sql \
   --brd /path/to/requirements.docx \
   --name "Client Project"
 
 # List engines
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --list-engines
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --list-engines
 ```
 
 ### Step 4: Find your report
 
 The Excel report is generated in the engine's output directory:
 ```
-.claude/skills/adobe-agent-code-audit/scripts/engines/commerce/output/
+.claude/skills/bmad-code-audit-agent/scripts/engines/commerce/output/
   ProjectName-audit-code+db+brd+patch-YYYYMMDD_HHMMSS-branch-name.xlsx
 ```
 
@@ -86,7 +86,7 @@ You can override the output path with `--output /custom/path`.
 If you want to run the scanner standalone without the full BMAD setup:
 
 ```bash
-cd /path/to/bmad-code-audit/skills/adobe-agent-code-audit/scripts
+cd /path/to/bmad-code-audit/skills/bmad-code-audit-agent/scripts
 
 # 1. Install dependencies
 pip install -r requirements.txt

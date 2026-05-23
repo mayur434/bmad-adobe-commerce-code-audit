@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Adobe Code Audit Report",
+  "title": "BMAD Code Audit Report",
   "type": "object",
   "properties": {
     "metadata": {

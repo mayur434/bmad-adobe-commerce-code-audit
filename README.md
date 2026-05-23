@@ -1,4 +1,4 @@
-# Adobe Code Audit — BMAD Custom Module
+# BMAD Code Audit — Custom Module
 
 [![GitHub](https://img.shields.io/badge/GitHub-mayur434%2Fbmad--adobe--commerce--code--audit-blue)](https://github.com/mayur434/bmad-adobe-commerce-code-audit)
 
@@ -16,7 +16,7 @@ Two-tier enterprise code audit for **Adobe Commerce**, **AEM as a Cloud Service*
 ### From a Git URL
 
 ```bash
-cd /path/to/your/adobe-commerce-project
+cd /path/to/your/project
 
 npx bmad-method install \
   --directory . \
@@ -32,7 +32,7 @@ npx bmad-method install \
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source /path/to/bmad-adobe-commerce-code-audit/skills \
+  --custom-source /path/to/bmad-code-audit/skills \
   --tools claude-code \
   --yes
 ```
@@ -68,16 +68,16 @@ AI-driven analysis that catches what scripts cannot:
 - Contextual performance issues (N+1 across multiple endpoints)
 - Configuration consistency (code expects config that doesn't exist)
 
-Uses platform-specific [rule packs](skills/adobe-agent-code-audit/resources/rule-packs/) and a multi-pass [detection strategy](skills/adobe-agent-code-audit/resources/shared/detection-strategy.md).
+Uses platform-specific [rule packs](skills/bmad-code-audit-agent/resources/rule-packs/) and a multi-pass [detection strategy](skills/bmad-code-audit-agent/resources/shared/detection-strategy.md).
 
 ---
 
 ## Folder Structure
 
 ```
-bmad-adobe-commerce-code-audit/
+bmad-code-audit/
 └── skills/
-    └── adobe-agent-code-audit/
+    └── bmad-code-audit-agent/
         ├── SKILL.md              # AI agent instructions
         ├── GUIDE.md              # Human usage guide
         ├── customize.toml        # Skill metadata & commands
@@ -132,10 +132,10 @@ Fast deterministic scan → Excel report in seconds.
 
 ```bash
 # After BMAD install (from project root)
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --path . --engine commerce --name "My Project"
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce --name "My Project"
 
 # With database dump + BRD
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --path . --engine commerce \
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce \
   --db /path/to/dump.sql \
   --brd /path/to/requirements.docx \
   --name "Client Project"
@@ -160,7 +160,7 @@ Ask: **"full audit my project"**
 Run the Python scanner directly without any BMAD setup:
 
 ```bash
-cd skills/adobe-agent-code-audit/scripts
+cd skills/bmad-code-audit-agent/scripts
 
 pip install -r requirements.txt
 
@@ -206,21 +206,21 @@ Tier 1 (Python Script)           Tier 2 (LLM Skill)
 | File | Purpose |
 |------|---------|
 | [MANUAL.md](MANUAL.md) | **Team guide** — how to create a new BMAD custom module from scratch |
-| [SKILL.md](skills/adobe-agent-code-audit/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
-| [GUIDE.md](skills/adobe-agent-code-audit/GUIDE.md) | Human-readable setup and usage guide |
-| [customize.toml](skills/adobe-agent-code-audit/customize.toml) | Skill metadata, commands, activation keywords |
-| [module.yaml](skills/adobe-agent-code-audit/assets/module.yaml) | BMAD module manifest (code, agents, config vars) |
-| [module-help.csv](skills/adobe-agent-code-audit/assets/module-help.csv) | Capability registry (13-column format) |
-| [detection-strategy.md](skills/adobe-agent-code-audit/resources/shared/detection-strategy.md) | Multi-pass analysis strategy for Tier 2 |
-| [severity-model.md](skills/adobe-agent-code-audit/resources/shared/severity-model.md) | Severity scoring framework |
-| [confidence-scoring.md](skills/adobe-agent-code-audit/resources/shared/confidence-scoring.md) | Confidence calculation model |
-| [impact-analysis.md](skills/adobe-agent-code-audit/resources/shared/impact-analysis.md) | Impact assessment framework |
-| [commerce/rules.md](skills/adobe-agent-code-audit/resources/rule-packs/commerce/rules.md) | Commerce platform rule pack |
-| [aemcs/rules.md](skills/adobe-agent-code-audit/resources/rule-packs/aemcs/rules.md) | AEM Cloud Service rule pack |
-| [eds/rules.md](skills/adobe-agent-code-audit/resources/rule-packs/eds/rules.md) | Edge Delivery Services rule pack |
-| [eds-commerce/rules.md](skills/adobe-agent-code-audit/resources/rule-packs/eds-commerce/rules.md) | EDS+Commerce hybrid rule pack |
-| [report-markdown.md](skills/adobe-agent-code-audit/templates/report-markdown.md) | Markdown report template |
-| [report-json.md](skills/adobe-agent-code-audit/templates/report-json.md) | JSON report template |
+| [SKILL.md](skills/bmad-code-audit-agent/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
+| [GUIDE.md](skills/bmad-code-audit-agent/GUIDE.md) | Human-readable setup and usage guide |
+| [customize.toml](skills/bmad-code-audit-agent/customize.toml) | Skill metadata, commands, activation keywords |
+| [module.yaml](skills/bmad-code-audit-agent/assets/module.yaml) | BMAD module manifest (code, agents, config vars) |
+| [module-help.csv](skills/bmad-code-audit-agent/assets/module-help.csv) | Capability registry (13-column format) |
+| [detection-strategy.md](skills/bmad-code-audit-agent/resources/shared/detection-strategy.md) | Multi-pass analysis strategy for Tier 2 |
+| [severity-model.md](skills/bmad-code-audit-agent/resources/shared/severity-model.md) | Severity scoring framework |
+| [confidence-scoring.md](skills/bmad-code-audit-agent/resources/shared/confidence-scoring.md) | Confidence calculation model |
+| [impact-analysis.md](skills/bmad-code-audit-agent/resources/shared/impact-analysis.md) | Impact assessment framework |
+| [commerce/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/commerce/rules.md) | Commerce platform rule pack |
+| [aemcs/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/aemcs/rules.md) | AEM Cloud Service rule pack |
+| [eds/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/eds/rules.md) | Edge Delivery Services rule pack |
+| [eds-commerce/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/eds-commerce/rules.md) | EDS+Commerce hybrid rule pack |
+| [report-markdown.md](skills/bmad-code-audit-agent/templates/report-markdown.md) | Markdown report template |
+| [report-json.md](skills/bmad-code-audit-agent/templates/report-json.md) | JSON report template |
 
 ---
 

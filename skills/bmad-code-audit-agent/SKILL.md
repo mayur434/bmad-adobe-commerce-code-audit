@@ -1,13 +1,13 @@
 ---
-name: adobe-agent-code-audit
-description: "Two-tier code auditor for Adobe Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic Python static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis."
+name: bmad-code-audit-agent
+description: "Two-tier code auditor for Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic Python static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis."
 ---
 
-# Adobe Code Audit Skill
+# BMAD Code Audit Skill
 
 ## Purpose
 
-Two-tier code audit system for Adobe ecosystem projects including AEM as a Cloud Service (AEMaaCS), Adobe Commerce (Magento), Edge Delivery Services (EDS), and EDS+Commerce hybrid implementations.
+Two-tier code audit system for enterprise projects including AEM as a Cloud Service (AEMaaCS), Adobe Commerce (Magento), Edge Delivery Services (EDS), and EDS+Commerce hybrid implementations.
 
 ### Tier 1 — Deterministic Static Analysis (Python Script)
 
@@ -34,7 +34,7 @@ AI-driven analysis using rule packs and detection strategy. Catches what scripts
 ## Activation
 
 This skill activates when the user asks to:
-- Audit Adobe project code
+- Audit project code
 - Review code quality for AEM/Commerce/EDS projects
 - Analyze architecture compliance
 - Check for anti-patterns or violations
@@ -80,15 +80,15 @@ Use when the user wants a quick deterministic report:
 
 ```bash
 # Auto-detect platform and run (from project root)
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --path . --name "Project Name"
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --name "Project Name"
 
 # Explicit engine selection
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --engine commerce --path .
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --engine aem --path .
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --engine eds --path .
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --engine commerce --path .
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --engine aem --path .
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --engine eds --path .
 
 # List available engines
-python3 .claude/skills/adobe-agent-code-audit/scripts/run.py --list-engines
+python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --list-engines
 ```
 
 Output: Excel report in engine's `output/` directory

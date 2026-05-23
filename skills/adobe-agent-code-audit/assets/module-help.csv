@@ -1,6 +1,0 @@
-module,skill,display-name,menu-code,description,action,args,phase,preceded-by,followed-by,required,output-location,outputs
-Adobe Code Audit,_meta,,,,,,,,,false,https://github.com/bmad-code-org/bmad-code-audit,
-Adobe Code Audit,bmad-code-audit,Code Audit,AU,Run two-tier code audit (Python scanner + AI deep analysis).,audit,,anytime,,,false,{audit_output},audit report|excel report
-Adobe Code Audit,bmad-code-audit,Scan Only,SC,Run Tier 1 deterministic Python scanner only.,scan,,anytime,,,false,{audit_output},excel report
-Adobe Code Audit,bmad-code-audit,Deep Audit,DA,Run Tier 2 AI semantic analysis only.,deep-audit,,anytime,bmad-code-audit:scan,,false,{audit_output},markdown report
-Adobe Code Audit,bmad-code-audit,List Engines,LE,Show available audit engines (commerce/aem/eds).,list-engines,,anytime,,,false,,engine list
