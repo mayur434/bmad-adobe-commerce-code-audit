@@ -21,7 +21,7 @@ This skill activates when the user asks to:
 ## Pre-flight: Auto-install Dependencies
 
 ```bash
-python3 -c "import openpyxl" 2>/dev/null || pip3 install openpyxl --quiet
+cd {skill_path}/scripts && [ -d node_modules ] || npm install --silent
 ```
 
 ## Workflow

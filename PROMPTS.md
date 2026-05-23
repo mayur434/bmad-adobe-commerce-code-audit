@@ -161,6 +161,51 @@ _Not yet supported by code generation agent._
 
 ---
 
+## 5. Test Coverage Agent (`bmad-dept-code-test-coverage-agent`)
+
+### All Platforms 🔲 (Scaffolded — engines TODO)
+
+**Coverage Analysis (Tier 1):**
+
+| Action | Prompt |
+|--------|--------|
+| Analyze coverage | `analyze test coverage` |
+| Show gaps | `show untested code` |
+| Module scope | `analyze test coverage for the Checkout module` |
+| File scope | `what's the test coverage for src/Model/OrderProcessor.php` |
+| Test plan | `create test plan` |
+| Priority gaps | `show highest-priority untested code` |
+
+**Test Generation (Tier 2):**
+
+| Action | Prompt |
+|--------|--------|
+| Generate for module | `generate tests for the Checkout module` |
+| Generate for file | `generate unit tests for src/Model/OrderProcessor.php` |
+| Generate integration | `generate integration tests for the Payment API` |
+| Generate for class | `create unit tests for the CartService class` |
+| Specific framework | `generate PHPUnit tests for the OrderExport service` |
+| Specific framework | `generate JUnit tests for the ArticleModel` |
+| Specific framework | `generate Jest tests for the hero block` |
+
+**Full (Tier 1 + Tier 2):**
+
+| Action | Prompt |
+|--------|--------|
+| Full coverage | `full test coverage` |
+| Full for module | `full test coverage for the Payment module` |
+| Targeted fill | `find and fill test gaps in the Catalog module` |
+
+**Post-analysis:**
+
+| Action | Prompt |
+|--------|--------|
+| Coverage report | `show test coverage report` |
+| Export gaps | `export coverage gaps as JSON` |
+| Progress | `how much test coverage did we gain?` |
+
+---
+
 ## CLI-Backed Prompts (Commerce Engine)
 
 These prompts trigger the TypeScript scanner under the hood. The agent auto-resolves project path, engine, and flags — **you never need to type CLI commands**.

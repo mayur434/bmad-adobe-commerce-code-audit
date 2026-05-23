@@ -10,10 +10,10 @@ required = ["claude-code"]
 keywords = ["impact", "blast radius", "what breaks", "dependency", "affected", "breaking changes", "upgrade risk", "patch risk", "trace dependencies", "change risk"]
 
 [skill.scripts]
-dispatcher = "scripts/run.py"
-requirements = "scripts/requirements.txt"
+dispatcher = "scripts/run.ts"
+package = "scripts/package.json"
 
 [skill.commands]
-analyze = "python3 scripts/run.py"
-trace = "python3 scripts/run.py --trace"
-upgrade-risk = "python3 scripts/run.py --upgrade-risk"
+analyze = "npx ts-node scripts/run.ts"
+trace = "npx ts-node scripts/run.ts --trace"
+upgrade-risk = "npx ts-node scripts/run.ts --upgrade-risk"

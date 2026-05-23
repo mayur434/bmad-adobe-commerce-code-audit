@@ -6,7 +6,7 @@ Code impact analysis for enterprise projects.
 
 ## Prerequisites
 
-- Python 3.10+
+- Node.js v20.12+
 - BMAD installed on your project
 
 ## Installation

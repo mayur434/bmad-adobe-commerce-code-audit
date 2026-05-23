@@ -6,8 +6,7 @@ Fast deterministic code scanner for enterprise projects.
 
 ## Prerequisites
 
-- Python 3.10+
-- pip (for dependencies)
+- Node.js v20.12+
 - BMAD installed on your project
 
 ## Installation

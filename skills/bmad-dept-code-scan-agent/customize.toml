@@ -10,10 +10,10 @@ required = ["claude-code"]
 keywords = ["scan", "static analysis", "code scan", "quick scan", "lint", "violations", "code quality", "find issues", "check code"]
 
 [skill.scripts]
-dispatcher = "scripts/run.py"
-requirements = "scripts/requirements.txt"
+dispatcher = "scripts/run.ts"
+package = "scripts/package.json"
 
 [skill.commands]
-scan = "python3 scripts/run.py"
-scan-quick = "python3 scripts/run.py --quick"
-list-engines = "python3 scripts/run.py --list-engines"
+scan = "npx ts-node scripts/run.ts"
+scan-quick = "npx ts-node scripts/run.ts --quick"
+list-engines = "npx ts-node scripts/run.ts --list-engines"

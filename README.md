@@ -21,7 +21,7 @@ A multi-agent AI suite purpose-built for **Adobe platform** projects — Commerc
 | Agent | Commerce | AEMaaCS | EDS | EDS+Commerce |
 |-------|:--------:|:-------:|:---:|:------------:|
 | **Audit** (Scanner + LLM) | ✅ | 🔲 | 🔲 | 🔲 |
-| **Generation** (MCP + LLM) | ✅ | ✅ | 🔲 | 🔲 |
+| **Code Generation** (MCP + LLM) | ✅ | ✅ | 🔲 | 🔲 |
 | **Test Coverage** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
 | **Impact Analysis** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
 | **Scan** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
@@ -33,7 +33,7 @@ A multi-agent AI suite purpose-built for **Adobe platform** projects — Commerc
 | Agent | Tier 1 (TypeScript Scanner) | Tier 2 (LLM Skills) |
 |-------|----------------------------|---------------------|
 | **Audit** | 42+ category static scan → Excel report | Architecture, data flow, business logic deep analysis |
-| **Generation** | — | MCP-powered (AEMaaCS) + LLM skills (AMS/Commerce) code gen |
+| **Code Generation** | — | MCP-powered (AEMaaCS) + LLM skills (AMS/Commerce) code gen |
 | **Test Coverage** | Coverage gap detection, priority scoring | Generates unit/integration/functional tests |
 | **Impact Analysis** | Dependency tracing, blast radius mapping | Risk assessment, upgrade compatibility |
 | **Scan** | Fast violation detection | Pattern matching, contextual analysis |
@@ -60,7 +60,7 @@ graph LR
         Manifest --> Scan
 
         Audit["🔍 Audit"]
-        Gen["⚡ Generation"]
+        Gen["⚡ Code Generation"]
         TestCov["🧪 Test Coverage"]
         Impact["💥 Impact Analysis"]
         Scan["📡 Scan"]
@@ -303,12 +303,12 @@ scan my project with DB dump at /path/to/dump.sql
 deep audit my project
 full audit my project
 
-# Generation (AEMaaCS)
+# Code Generation (AEMaaCS)
 create a new AEM component called Hero Banner
 generate a Sling Model for the Article component
 create Cloud Manager pipeline configuration
 
-# Generation (Commerce)
+# Code Generation (Commerce)
 create a new Commerce module Acme_CustomShipping
 create an after plugin on Magento\Catalog\Model\Product::getName
 add a GraphQL resolver for querying custom entity by ID
@@ -358,7 +358,7 @@ Each skill folder contains:
 | `assets/` | Module manifest + capability registry |
 | `resources/` | Rule packs, scoring models, detection strategies |
 | `templates/` | Report output templates |
-| `scripts/` | TypeScript/Python engines |
+| `scripts/` | TypeScript engines |
 
 ---
 
