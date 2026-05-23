@@ -40,33 +40,39 @@ This installs: `exceljs` (Excel reports), `mammoth` (BRD .docx parsing), `fast-g
 
 ### Step 3: Run the audit
 
-**Option A — Via AI agent (Tier 1 + Tier 2):**
+Ask your AI agent using natural language. The agent resolves your intent to the correct CLI flags automatically.
 
-Ask your agent:
-- "audit my project"
-- "run a code review"
-- "scan my commerce code"
+**Basic scans:**
+- "scan my project"
+- "scan my project and name it Acme"
+- "scan only the Checkout and Payment modules"
+- "scan only the Custom namespace"
 
-The agent will use the SKILL.md instructions to run the TypeScript scanner (Tier 1) and then perform AI deep analysis (Tier 2).
+**With data inputs:**
+- "scan my project with DB dump at /path/to/dump.sql"
+- "scan with BRD impact analysis using /path/to/requirements.docx"
+- "scan with bug report from /path/to/bugs.xlsx"
 
-**Option B — Via CLI (Tier 1 only):**
+**Targeted analysis:**
+- "just run BRD analysis from /path/to/brd.docx, skip the code scan"
+- "analyze patch upgrade impact from 2.4.7-p7 to 2.4.7-p9"
 
-```bash
-# Auto-detect platform
-npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path .
+**Combined (all layers):**
+- "run full scanner with DB at /db.sql, BRD at /spec.docx, bugs at /bugs.xlsx"
 
-# Explicit engine + name
-npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce --name "My Project"
+**Deep/Full audit:**
+- "deep audit my project" (Tier 2 only — LLM semantic analysis)
+- "full audit my project" (Tier 1 + Tier 2 combined)
 
-# Full audit: code + DB + BRD + patch
-npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce \
-  --db /path/to/dump.sql \
-  --brd /path/to/requirements.docx \
-  --name "Client Project"
+**Utilities:**
+- "export findings as JSON"
+- "what engines are available?"
 
-# List engines
-npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --list-engines
-```
+The agent will:
+1. Auto-detect the platform (or ask if ambiguous)
+2. Build the correct CLI command with all extracted flags
+3. Execute the scanner
+4. Present results / point to the generated Excel report
 
 ### Step 4: Find your report
 
@@ -138,49 +144,52 @@ npx ts-node scripts/run.ts --list-engines
 
 Fast deterministic scan → Excel report.
 
-```bash
-# Commerce audit (full: code + DB + BRD + patch)
-npx ts-node run.ts --engine commerce --path /project
-
-# Commerce with specific options
-npx ts-node run.ts --engine commerce --path /project --name "Client" --db /path/dump.sql
-
-# Commerce — BRD impact analysis only
-npx ts-node run.ts --engine commerce --path /project --no-code-audit --brd /path/brd.txt
-
-# Commerce — bug impact analysis
-npx ts-node run.ts --engine commerce --path /project --bugs /path/bugs.xlsx
-```
+| Prompt | What Happens |
+|--------|-------------|
+| "scan my project" | Code audit → Excel |
+| "scan with DB dump at /path.sql" | Code + DB audit → Excel |
+| "scan with BRD from /brd.docx" | Code + BRD impact → Excel |
+| "scan with bug report /bugs.xlsx" | Code + Bug cascade → Excel |
+| "run full scanner with DB, BRD, and bugs" | All layers → Excel |
+| "just run BRD analysis, skip code scan" | BRD-only (--no-code-audit) → Excel |
+| "scan only Checkout module" | Filtered code audit → Excel |
+| "export JSON" | JSON output (for CI pipes) |
 
 ### Mode B: Tier 2 Only (LLM Deep Analysis)
 
-Invoke the BMAD skill via agent command — uses rule packs from `resources/rule-packs/` and detection strategy from `resources/shared/`.
+| Prompt | What Happens |
+|--------|-------------|
+| "deep audit my project" | AI semantic analysis using rule packs |
+| "deep audit only the Payment module" | Focused AI analysis |
 
 ### Mode C: Full Audit (Tier 1 + Tier 2)
 
-1. Run Tier 1 to get the deterministic Excel
-2. Ask the BMAD agent to perform deep analysis on high-severity findings
-3. Get both: structured Excel + AI narrative report
+| Prompt | What Happens |
+|--------|-------------|
+| "full audit my project" | Scanner → Excel, then AI deep analysis on high-severity findings |
+| "complete audit with scanner and deep analysis" | Same as above |
 
 ---
 
-## Commerce Engine — Full CLI Reference
+## Commerce Engine — CLI Flags (Agent Reference)
 
-```bash
-npx ts-node run.ts --engine commerce [OPTIONS]
+The agent builds these commands from user prompts. You should never need to type these manually.
 
-OPTIONS:
-  --path PATH          Adobe Commerce project root
-  --name NAME          Project name for report title
-  --output DIR         Output directory (default: output/)
-  --namespace NS       Custom module namespace (default: Custom)
-  --module MOD         Audit only specified modules (comma-separated)
-  --db PATH            SQL dump file for DB analysis
-  --brd PATH           BRD file for impact analysis (repeatable)
+```
+npx ts-node run.ts --engine commerce [FLAGS]
+
+FLAGS (resolved from natural language):
+  --path PATH          Project root (auto: workspace root)
+  --name NAME          Report title (auto: folder name)
+  --output DIR         Output dir (default: output/)
+  --namespace NS       Module namespace (default: Custom)
+  --module MOD         Filter modules (comma-separated)
+  --db PATH            SQL dump for DB analysis
+  --brd PATH           BRD document (repeatable)
   --bugs PATH          Bug report Excel (.xlsx)
-  --no-code-audit      Skip code audit categories
-  --config PATH        Custom config.json path
-  --json               Output as JSON to stdout (for integrations)
+  --no-code-audit      Skip code audit (for BRD-only / bugs-only)
+  --config PATH        Custom config.json
+  --json               JSON to stdout (for CI)
 ```
 
 ### Commerce Config File
