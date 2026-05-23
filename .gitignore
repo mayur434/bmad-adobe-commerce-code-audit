@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Claude Code generated/resolved directory
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Output artifacts (generated)
+_bmad-output/

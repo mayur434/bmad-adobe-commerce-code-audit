@@ -1,0 +1,27 @@
+module,skill,display-name,menu-code,description,action,args,phase,preceded-by,followed-by,required,output-location,outputs
+BMAD DEPT Code Agent,_meta,,,,,,,,,false,https://github.com/mayur434/bmad-dept-code-agent,
+BMAD DEPT Code Agent,bmad-dept-code-audit-agent,Code Audit,AU,Run two-tier code audit (TypeScript scanner + AI deep analysis).,audit,,anytime,,,false,{audit_output},audit report|excel report
+BMAD DEPT Code Agent,bmad-dept-code-audit-agent,Scan Only,SC,Run Tier 1 deterministic TypeScript scanner only.,scan,,anytime,,,false,{audit_output},excel report
+BMAD DEPT Code Agent,bmad-dept-code-audit-agent,Deep Audit,DA,Run Tier 2 AI semantic analysis only.,deep-audit,,anytime,bmad-dept-code-audit-agent:scan,,false,{audit_output},markdown report
+BMAD DEPT Code Agent,bmad-dept-code-audit-agent,List Engines,LE,Show available audit engines (commerce/aem/eds).,list-engines,,anytime,,,false,,engine list
+BMAD DEPT Code Agent,bmad-dept-code-scan-agent,Code Scan,CS,Run fast deterministic static analysis scan.,scan,,anytime,,,false,{audit_output},excel report
+BMAD DEPT Code Agent,bmad-dept-code-scan-agent,Quick Scan,QS,Run quick scan mode.,scan-quick,,anytime,,,false,{audit_output},scan report
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Generate Code,GC,Generate production-ready code from specifications (AEM + Commerce).,generate,,anytime,,,false,,generated code
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Scaffold,SF,Scaffold a new AEM component or Commerce module.,scaffold,,anytime,,,false,,scaffolded files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Module,CM,Scaffold a new Adobe Commerce module (registration + module.xml + composer.json).,generate,--scope module,anytime,,,false,,module files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Plugin,CP,Generate a plugin (interceptor) with di.xml registration.,generate,--scope plugin,anytime,,,false,,plugin + di.xml
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Observer,CO,Generate an observer with events.xml subscription.,generate,--scope observer,anytime,,,false,,observer + events.xml
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce API,CA,Generate REST/SOAP API endpoint (interface + impl + webapi.xml + acl).,generate,--scope api,anytime,,,false,,api files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce GraphQL,CG,Generate GraphQL resolver + schema.graphqls.,generate,--scope graphql,anytime,,,false,,graphql files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Admin Grid,AG,Generate admin UI grid (listing.xml + controller + data provider).,generate,--scope admin-grid,anytime,,,false,,admin grid files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Admin Form,AF,Generate admin UI form (form.xml + save/edit/delete controllers).,generate,--scope admin-form,anytime,,,false,,admin form files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Block,CB,Generate storefront block + ViewModel + .phtml template.,generate,--scope block,anytime,,,false,,block + template
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce CLI,CL,Generate console command registered via di.xml.,generate,--scope cli,anytime,,,false,,command class + di.xml
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Cron,CR,Generate cron job with locking + crontab.xml.,generate,--scope cron,anytime,,,false,,cron class + crontab.xml
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Queue,CQ,Generate message queue consumer/publisher with topology config.,generate,--scope queue,anytime,,,false,,queue files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce DB Schema,CD,Generate db_schema.xml with tables/indexes/constraints.,generate,--scope db-schema,anytime,,,false,,db_schema.xml
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Repository,RE,Generate full CRUD repository pattern (interface + model + resource + collection).,generate,--scope repository,anytime,,,false,,repository files
+BMAD DEPT Code Agent,bmad-dept-code-generation-agent,Commerce Tests,CT,Generate unit/integration tests for Commerce classes.,generate,--scope tests,anytime,,,false,,test files
+BMAD DEPT Code Agent,bmad-dept-code-impact-analysis-agent,Impact Analysis,IA,Analyze blast radius and risk of code changes.,analyze,,anytime,,,false,{audit_output},impact report
+BMAD DEPT Code Agent,bmad-dept-code-impact-analysis-agent,Dependency Trace,DT,Trace dependency chains for a target.,trace,,anytime,,,false,{audit_output},dependency map
+BMAD DEPT Code Agent,bmad-dept-code-impact-analysis-agent,Upgrade Risk,UR,Assess risk for upgrades and patches.,upgrade-risk,,anytime,,,false,{audit_output},risk report
