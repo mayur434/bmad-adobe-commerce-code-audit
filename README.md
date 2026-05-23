@@ -14,131 +14,97 @@ This repository is a **custom BMAD module** (`dca`) that plugs directly into the
 
 ## What We Built
 
-A multi-agent AI suite purpose-built for **Adobe platform** projects:
+A multi-agent AI suite purpose-built for **Adobe platform** projects — Commerce, AEMaaCS, EDS, and EDS+Commerce.
 
-| Agent | Purpose | Status |
-|-------|---------|--------|
-| **Audit** | Two-tier code auditor — deterministic scanner + LLM deep analysis | ✅ Commerce, 🔲 AEM/EDS |
-| **Generation** | Produces production-ready code from natural language prompts | ✅ AEMaaCS (MCP), ✅ AEM AMS, ✅ Commerce |
-| **Test Coverage** | Coverage gap analysis + LLM-driven test generation | 🔲 All platforms |
-| **Impact Analysis** | Evaluates blast radius of changes, upgrades, and patches | 🔲 Planned |
-| **Scan** | Fast static analysis with structured output | 🔲 Planned |
+### Coverage Matrix
 
-### Audit — Two Tiers
+| Agent | Commerce | AEMaaCS | EDS | EDS+Commerce |
+|-------|:--------:|:-------:|:---:|:------------:|
+| **Audit** (Scanner + LLM) | ✅ | 🔲 | 🔲 | 🔲 |
+| **Generation** (MCP + LLM) | ✅ | ✅ | 🔲 | 🔲 |
+| **Test Coverage** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
+| **Impact Analysis** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
+| **Scan** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
 
-| Tier | Method | Output | Speed |
-|------|--------|--------|-------|
-| **Tier 1** | Deterministic TypeScript/Node.js scanner | Excel report (42+ categories) | Seconds |
-| **Tier 2** | LLM semantic analysis (rule packs + detection strategy) | Markdown/JSON narrative report | Minutes |
+> ✅ = Implemented &nbsp;&nbsp; 🔲 = Scaffolded, coming next
 
-**Tier 1** covers security, performance, deprecated APIs, Magento coding standards, DI violations, plugin conflicts, observer issues, database schema integrity, BRD impact mapping, bug cascade analysis, and patch/upgrade breaking changes.
+### What Each Agent Does
 
-**Tier 2** catches what scripts cannot — architectural anti-patterns, cross-file data flow issues, business logic bugs, contextual N+1 queries, and config consistency problems.
-
-### Generation
-
-- **AEMaaCS** — Full MCP integration (remote Adobe Cloud + local SDK). Zero-config auto-provisioning.
-- **AEM AMS** — LLM skills-based generation, Maven + CI/CD deploy pipelines.
-- **Adobe Commerce** — Module scaffolding, plugins, observers, GraphQL, admin UI, cron, message queues, and more.
+| Agent | Tier 1 (TypeScript Scanner) | Tier 2 (LLM Skills) |
+|-------|----------------------------|---------------------|
+| **Audit** | 42+ category static scan → Excel report | Architecture, data flow, business logic deep analysis |
+| **Generation** | — | MCP-powered (AEMaaCS) + LLM skills (AMS/Commerce) code gen |
+| **Test Coverage** | Coverage gap detection, priority scoring | Generates unit/integration/functional tests |
+| **Impact Analysis** | Dependency tracing, blast radius mapping | Risk assessment, upgrade compatibility |
+| **Scan** | Fast violation detection | Pattern matching, contextual analysis |
 
 ### Module Architecture
 
 ```mermaid
-graph TB
+graph LR
     subgraph BMAD["BMAD Framework"]
         CLI["npx bmad-method install"]
-        Core["Core Module (bmm)"]
+        Core["Core Module"]
     end
 
-    subgraph DCA["Custom Module: bmad-dept-code-agent (dca)"]
-        direction TB
-        Manifest["module.yaml + marketplace.json"]
+    CLI -->|installs| Module
+    Core -->|required by| Module
 
-        subgraph Agents["Agent Skills"]
-            direction LR
-            Audit["🔍 Audit Agent"]
-            Gen["⚡ Generation Agent"]
-            TestCov["🧪 Test Coverage Agent"]
-            Impact["💥 Impact Analysis Agent"]:::planned
-            Scan["📡 Scan Agent"]:::planned
-        end
+    subgraph Module["bmad-dept-code-agent (dca)"]
+        Manifest["module.yaml\nmarketplace.json"]
 
-        subgraph AuditInternals["Audit Agent — Dual Engine"]
-            direction TB
-            AuditTS["Tier 1: TypeScript Scanner"]
-            AuditLLM["Tier 2: LLM Rule Packs"]
-            AuditTS -->|"feeds high-severity findings"| AuditLLM
-        end
+        Manifest --> Audit
+        Manifest --> Gen
+        Manifest --> TestCov
+        Manifest --> Impact
+        Manifest --> Scan
 
-        subgraph GenInternals["Generation Agent — Dual Engine"]
-            direction TB
-            GenMCP["MCP Servers (AEMaaCS)"]
-            GenLLM["LLM Skills (AMS / Commerce)"]
-        end
-
-        subgraph TestInternals["Test Coverage Agent — Dual Engine"]
-            direction TB
-            TestTS["Tier 1: TS Coverage Analyzer"]
-            TestLLM["Tier 2: LLM Test Generator"]
-            TestTS -->|"priority gaps"| TestLLM
-        end
-
-        subgraph ImpactInternals["Impact Analysis Agent — Dual Engine"]:::planned
-            direction TB
-            ImpactTS["Tier 1: TS Dependency Tracer"]:::planned
-            ImpactLLM["Tier 2: LLM Risk Assessor"]:::planned
-            ImpactTS -->|"blast radius"| ImpactLLM
-        end
-
-        subgraph ScanInternals["Scan Agent — Dual Engine"]:::planned
-            direction TB
-            ScanTS["Tier 1: TS Static Scanner"]:::planned
-            ScanLLM["Tier 2: LLM Pattern Matcher"]:::planned
-            ScanTS -->|"violations"| ScanLLM
-        end
-
-        subgraph EngineLayer["TypeScript Engine Layer (per platform)"]
-            direction LR
-            EC["commerce ✅"]
-            EA["aem 🔲"]:::planned
-            EE["eds 🔲"]:::planned
-            EEC["eds-commerce 🔲"]:::planned
-        end
+        Audit["🔍 Audit"]
+        Gen["⚡ Generation"]
+        TestCov["🧪 Test Coverage"]
+        Impact["💥 Impact Analysis"]
+        Scan["📡 Scan"]
     end
 
-    subgraph Target["Your Project"]
-        Claude[".claude/skills/"]
-        Report["Reports (Excel / Markdown / JSON)"]
-        Code["Generated Code + Tests"]
+    subgraph Engines["Tier 1 — TypeScript Engines"]
+        CommerceE["commerce ✅"]
+        AemE["aem 🔲"]
+        EdsE["eds 🔲"]
+        EdsComE["eds-commerce 🔲"]
     end
 
-    CLI -->|installs| DCA
-    Core -->|required by| DCA
-    Manifest -->|registers| Agents
+    subgraph LLMLayer["Tier 2 — LLM Skills"]
+        RulePacks["Rule Packs"]
+        MCPServers["MCP Servers"]
+        Detection["Detection Strategy"]
+    end
 
-    Audit --> AuditInternals
-    Gen --> GenInternals
-    TestCov --> TestInternals
-    Impact --> ImpactInternals
-    Scan --> ScanInternals
+    Audit --> CommerceE
+    TestCov --> Engines
+    Impact --> Engines
+    Scan --> Engines
 
-    AuditTS --> EngineLayer
-    TestTS --> EngineLayer
-    ImpactTS --> EngineLayer
-    ScanTS --> EngineLayer
+    Audit --> RulePacks
+    Gen --> MCPServers
+    Gen --> Detection
+    TestCov --> LLMLayer
+    Impact --> LLMLayer
+    Scan --> LLMLayer
 
-    DCA -->|"deployed into"| Claude
-    AuditTS --> Report
-    AuditLLM --> Report
-    GenMCP --> Code
-    GenLLM --> Code
-    TestTS --> Report
-    TestLLM --> Code
+    subgraph Output["Your Project"]
+        Skills[".claude/skills/"]
+        Reports["Reports\n(Excel / JSON / MD)"]
+        Code["Generated Code\n+ Tests"]
+    end
 
-    classDef planned fill:#e0e0e0,stroke:#999,color:#666,stroke-dasharray: 5 5
+    Module -->|deployed into| Skills
+    Engines --> Reports
+    LLMLayer --> Reports
+    LLMLayer --> Code
+    MCPServers --> Code
 ```
 
-> **Legend:** Solid nodes = implemented. Dashed/gray nodes = planned (coming soon). Every agent follows the same **Tier 1 (TypeScript) + Tier 2 (LLM)** pattern.
+> Every agent follows the same **Tier 1 (TypeScript Scanner) + Tier 2 (LLM Skills)** dual-engine pattern. Gray/🔲 items are scaffolded and coming next — the Commerce engine is the working benchmark.
 
 ---
 
