@@ -6,7 +6,7 @@ Legend: ✅ Implemented | 🔲 Planned (not yet available)
 
 ---
 
-## 1. Code Audit Agent (`bmad-code-audit-agent`)
+## 1. Code Audit Agent (`bmad-dept-code-audit-agent`)
 
 ### Adobe Commerce ✅
 
@@ -64,7 +64,7 @@ Legend: ✅ Implemented | 🔲 Planned (not yet available)
 
 ---
 
-## 2. Code Generation Agent (`bmad-code-generation-agent`)
+## 2. Code Generation Agent (`bmad-dept-code-generation-agent`)
 
 ### AEMaaCS ✅ (MCP-powered)
 
@@ -101,9 +101,27 @@ Legend: ✅ Implemented | 🔲 Planned (not yet available)
 | Deploy local | `build and deploy to local AEM instance` |
 | Deploy AMS | `deploy to AMS dev environment` |
 
-### Adobe Commerce 🔲
+### Adobe Commerce ✅
 
-_Not yet supported by code generation agent._
+| Action | Prompt |
+|--------|--------|
+| Module scaffold | `create a new Commerce module Acme_CustomShipping` |
+| Plugin | `create an after plugin on Magento\Catalog\Model\Product::getName` |
+| Observer | `create an observer for checkout_submit_all_after event` |
+| REST API | `create a REST API endpoint for custom entity CRUD` |
+| GraphQL | `add a GraphQL resolver for querying custom entity by ID` |
+| Admin grid | `generate admin UI grid listing for my custom entity` |
+| Admin form | `create admin edit form for the custom entity` |
+| Storefront block | `create a frontend block with ViewModel for product badges` |
+| CLI command | `generate a console command to sync inventory` |
+| Cron job | `create a cron job that runs every 15 minutes to clean expired quotes` |
+| Message queue | `scaffold a message queue consumer for order export` |
+| DB schema | `create db_schema.xml for a custom entity table` |
+| EAV attribute | `add a custom product attribute 'delivery_estimate'` |
+| Repository | `generate full CRUD repository for my custom entity` |
+| Config | `add admin system configuration for API credentials` |
+| Unit tests | `generate unit tests for the OrderExportService` |
+| Deploy | `enable the module and run setup:upgrade` |
 
 ### EDS 🔲
 
@@ -115,7 +133,7 @@ _Not yet supported by code generation agent._
 
 ---
 
-## 3. Impact Analysis Agent (`bmad-code-impact-analysis-agent`)
+## 3. Impact Analysis Agent (`bmad-dept-code-impact-analysis-agent`)
 
 ### All Platforms 🔲 (Workflow TODO — activation defined)
 
@@ -130,7 +148,7 @@ _Not yet supported by code generation agent._
 
 ---
 
-## 4. Scan Agent (`bmad-code-scan-agent`)
+## 4. Scan Agent (`bmad-dept-code-scan-agent`)
 
 ### All Platforms 🔲 (Workflow TODO — activation defined)
 
@@ -203,7 +221,7 @@ These prompts trigger the TypeScript scanner under the hood. The agent auto-reso
 
 | Platform | Code Audit | Code Generation | Impact Analysis | Scan |
 |----------|:----------:|:---------------:|:---------------:|:----:|
-| **Adobe Commerce** | ✅ | 🔲 | 🔲 | 🔲 |
+| **Adobe Commerce** | ✅ | ✅ (LLM) | 🔲 | 🔲 |
 | **AEMaaCS** | 🔲 | ✅ (MCP) | 🔲 | 🔲 |
 | **AEM AMS** | 🔲 | ✅ (LLM) | 🔲 | 🔲 |
 | **EDS** | 🔲 | 🔲 | 🔲 | 🔲 |

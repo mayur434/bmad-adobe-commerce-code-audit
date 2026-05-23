@@ -20,20 +20,20 @@ cd /path/to/your/project
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source ~/bmad-modules/adobe-code-audit/skills \
+  --custom-source ~/bmad-modules/bmad-dept-code-agent/skills \
   --tools claude-code \
   --yes
 ```
 
-> Replace `~/bmad-modules/adobe-code-audit` with the actual path to this repo.
+> Replace `~/bmad-modules/bmad-dept-code-agent` with the actual path to this repo.
 > Or use a Git URL: `--custom-source https://github.com/mayur434/bmad-dept-code-agent.git`
 
-After install, the skill lives at `.claude/skills/bmad-code-audit-agent/`.
+After install, the skill lives at `.claude/skills/bmad-dept-code-audit-agent/`.
 
 ### Step 2: Install Node dependencies
 
 ```bash
-cd .claude/skills/bmad-code-audit-agent/scripts && npm install
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
 ```
 
 This installs: `exceljs` (Excel reports), `mammoth` (BRD .docx parsing), `fast-glob` (file scanning).
@@ -78,7 +78,7 @@ The agent will:
 
 The Excel report is generated in the engine's output directory:
 ```
-.claude/skills/bmad-code-audit-agent/scripts/engines/commerce/output/
+.claude/skills/bmad-dept-code-audit-agent/scripts/engines/commerce/output/
   ProjectName-audit-code+db+brd+patch-YYYYMMDD_HHMMSS-branch-name.xlsx
 ```
 
@@ -91,7 +91,7 @@ You can override the output path with `--output /custom/path`.
 If you want to run the scanner standalone without the full BMAD setup:
 
 ```bash
-cd /path/to/bmad-dept-code-agent/skills/bmad-code-audit-agent/scripts
+cd /path/to/bmad-dept-code-agent/skills/bmad-dept-code-audit-agent/scripts
 
 # 1. Install dependencies
 npm install
@@ -270,7 +270,7 @@ bmad-dept-code-agent/               # Module repository
 │   ├── module.yaml                 # BMAD module declaration (code: dca)
 │   ├── module-help.csv             # Capability registry (13-column format)
 │   └── skills/
-│       └── bmad-code-audit/        # The audit skill
+│       └── bmad-dept-code-audit-agent/  # The audit skill
 │           ├── SKILL.md            # Agent instructions
 │           ├── GUIDE.md            # This file
 │           ├── customize.toml      # Skill config

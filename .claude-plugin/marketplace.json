@@ -13,10 +13,10 @@
       "description": "Multi-agent AI suite for Adobe platforms — code audit, generation, impact analysis, and scanning.",
       "version": "2.0.0",
       "skills": [
-        "./skills/bmad-code-audit-agent",
-        "./skills/bmad-code-scan-agent",
-        "./skills/bmad-code-generation-agent",
-        "./skills/bmad-code-impact-analysis-agent"
+        "./skills/bmad-dept-code-audit-agent",
+        "./skills/bmad-dept-code-scan-agent",
+        "./skills/bmad-dept-code-generation-agent",
+        "./skills/bmad-dept-code-impact-analysis-agent"
       ]
     }
   ]

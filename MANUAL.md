@@ -28,7 +28,7 @@ npx bmad-method install \
 
 After install, run deps:
 ```bash
-cd .claude/skills/bmad-code-audit-agent/scripts && npm install
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
 ```
 
 ### Update (after pushing changes to this repo)
@@ -53,7 +53,7 @@ npx bmad-method install \
 
 Then reinstall deps:
 ```bash
-cd .claude/skills/bmad-code-audit-agent/scripts && npm install
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
 ```
 
 ### Uninstall
@@ -87,7 +87,7 @@ bmad-dept-code-agent/
 └── skills/                          ← --custom-source points here
     ├── module.yaml                  ← Module identity
     ├── module-help.csv              ← Menu entries
-    └── bmad-code-audit-agent/       ← Skill folder
+    └── bmad-dept-code-audit-agent/       ← Skill folder
         ├── SKILL.md                 ← Agent instructions (most important)
         ├── GUIDE.md                 ← Human docs
         ├── customize.toml           ← Commands, activation keywords
@@ -176,7 +176,7 @@ full = "scan+skill"
 | Item | Convention | Example |
 |------|-----------|---------|
 | Repo | `bmad-<purpose>` | `bmad-dept-code-agent` |
-| Skill folder | `bmad-<purpose>-agent` | `bmad-code-audit-agent` |
+| Skill folder | `bmad-<purpose>-agent` | `bmad-dept-code-audit-agent` |
 | Module code | 2-4 chars | `aca` |
 | Engine dirs | lowercase, underscores | `eds_commerce` |
 | Engine IDs | lowercase, hyphens | `eds-commerce` |

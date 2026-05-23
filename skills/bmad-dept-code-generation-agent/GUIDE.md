@@ -26,7 +26,7 @@ npx bmad-method install \
   --yes
 ```
 
-After install: `.claude/skills/bmad-code-generation-agent/`
+After install: `.claude/skills/bmad-dept-code-generation-agent/`
 
 ### Step 2: MCP (Automatic — No Action Required)
 
@@ -50,7 +50,7 @@ Both modes work simultaneously — remote for cloud, local for development.
 
 If you need to pre-provision without agent activation:
 ```bash
-npx ts-node .claude/skills/bmad-code-generation-agent/scripts/run.ts --setup
+npx ts-node .claude/skills/bmad-dept-code-generation-agent/scripts/run.ts --setup
 ```
 
 ### Step 3: Set environment variables
@@ -75,6 +75,8 @@ AEM_CLIENT_SECRET=your-client-secret
 
 ### Via AI Agent
 
+#### AEM Prompts
+
 Ask your agent:
 - "create a hero-banner component"
 - "generate a Sling Model for the carousel"
@@ -89,7 +91,35 @@ The agent will:
 3. Generate all required files across the correct project layers
 4. Produce unit tests for generated Java code
 
+#### Adobe Commerce Prompts
+
+Ask your agent:
+- "create a new Commerce module Acme_CustomShipping"
+- "create an after plugin on Magento\Catalog\Model\Product::getName"
+- "create an observer for checkout_submit_all_after event"
+- "create a REST API endpoint for custom entity CRUD"
+- "add a GraphQL resolver for querying custom entity by ID"
+- "generate admin UI grid listing for my custom entity"
+- "create admin edit form for the custom entity"
+- "create a frontend block with ViewModel for product badges"
+- "generate a console command to sync inventory"
+- "create a cron job that runs every 15 minutes"
+- "scaffold a message queue consumer for order export"
+- "create db_schema.xml for a custom entity table"
+- "generate full CRUD repository for my custom entity"
+- "add admin system configuration for API credentials"
+- "generate unit tests for the OrderExportService"
+
+The agent will:
+1. Detect Commerce platform (composer.json, app/code/, etc/module.xml)
+2. Scan existing modules for namespace, DI config, patterns
+3. Generate all required files following PSR-12 + Magento coding standards
+4. Apply security rules (XSS, CSRF, ACL, input validation)
+5. Produce unit tests for generated service classes
+
 ### What Gets Generated
+
+#### AEM
 
 | Request | Files Created |
 |---------|--------------|
@@ -100,6 +130,26 @@ The agent will:
 | Editable Template | Template def + policies + allowed components |
 | Dispatcher Config | vhost + filters + cache + rewrites |
 | Cloud Manager Pipeline | Pipeline YAML + env vars template |
+
+#### Adobe Commerce
+
+| Request | Files Created |
+|---------|--------------|
+| Module scaffold | registration.php + module.xml + composer.json |
+| Plugin | Plugin class + di.xml entry |
+| Observer | Observer class + events.xml subscription |
+| REST API | Interface + impl + webapi.xml + acl.xml |
+| GraphQL | schema.graphqls + resolver + data provider |
+| Admin Grid | listing.xml + controller + data provider + layout + menu |
+| Admin Form | form.xml + edit/save/delete controllers + data provider |
+| Storefront Block | Block + ViewModel + .phtml template + layout XML |
+| Console Command | Command class + di.xml registration |
+| Cron Job | Cron class (with locking) + crontab.xml |
+| Message Queue | Consumer + publisher + communication/topology XML |
+| DB Schema | db_schema.xml + db_schema_whitelist.json |
+| Repository (CRUD) | Interface + model + resource model + collection + repo |
+| System Config | system.xml + config.xml + Config helper + ACL |
+| Unit Tests | PHPUnit test class + mocks + fixtures |
 
 ## MCP Server Details
 

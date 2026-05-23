@@ -8,7 +8,7 @@ recommendedModules: [bmm]
 requiredModules: [core]
 
 agents:
-  - code: bmad-code-audit-agent
+  - code: bmad-dept-code-audit-agent
     name: Auditor
     title: Code Audit Specialist
     icon: "🔍"
@@ -40,7 +40,7 @@ post-install-notes: |
     Ask: "audit my project" or "scan my project" or "generate a component"
 
   Tier 1 (TypeScript scanner):
-    npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce
+    npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce
 
   Tier 2 (AI deep analysis):
     Triggered automatically when you ask the agent to audit.

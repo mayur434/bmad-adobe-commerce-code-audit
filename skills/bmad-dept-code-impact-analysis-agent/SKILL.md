@@ -1,5 +1,5 @@
 ---
-name: bmad-code-impact-analysis-agent
+name: bmad-dept-code-impact-analysis-agent
 description: "Code impact analysis agent (part of BMAD DEPT Code Agent suite). Evaluates blast radius of changes, traces dependency chains, and assesses risk for modifications, upgrades, and patches."
 ---
 

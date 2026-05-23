@@ -1,5 +1,5 @@
 ---
-name: bmad-code-audit-agent
+name: bmad-dept-code-audit-agent
 description: "Two-tier code auditor (part of BMAD DEPT Code Agent suite). Tier 1: deterministic TypeScript/Node.js static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis for Commerce, AEMaaCS, EDS, and hybrid projects."
 ---
 
@@ -53,7 +53,7 @@ Before running any audit, check if Node dependencies are installed. If not, inst
 
 ```bash
 # Check and install (works on macOS, Linux, Windows WSL)
-cd .claude/skills/bmad-code-audit-agent/scripts && [ -d node_modules ] || npm install --silent
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && [ -d node_modules ] || npm install --silent
 ```
 
 Do NOT ask the user for permission to install these — they are required for the scanner to function. Just install silently if missing.

@@ -1,5 +1,5 @@
 [skill]
-name = "bmad-code-audit-agent"
+name = "bmad-dept-code-audit-agent"
 description = "Two-tier code auditor for Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic TypeScript/Node.js static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis (architecture, cross-file flows, contextual reasoning)."
 version = "2.0.0"
 

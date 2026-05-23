@@ -1,0 +1,21 @@
+[skill]
+name = "bmad-dept-code-generation-agent"
+description = "AI-driven code generation for AEMaaCS (MCP), AEM AMS (LLM skills), and Adobe Commerce (Magento 2). Produces production-ready code following platform best practices, security standards, and scalable architecture."
+version = "1.1.0"
+
+[skill.tools]
+required = ["claude-code"]
+
+[skill.activation]
+keywords = ["generate", "create component", "scaffold", "sling model", "htl", "osgi service", "content fragment model", "experience fragment", "editable template", "dispatcher config", "cloud manager", "unit test", "aem component", "magento module", "commerce module", "commerce plugin", "plugin interceptor", "observer", "graphql resolver", "admin grid", "admin form", "storefront block", "console command", "cron job", "message queue", "db_schema", "webapi", "rest api", "commerce test", "eav attribute"]
+
+[skill.scripts]
+dispatcher = "scripts/run.ts"
+package = "scripts/package.json"
+
+[skill.commands]
+generate = "skill"
+scaffold = "npx ts-node scripts/run.ts --scaffold"
+list-templates = "npx ts-node scripts/run.ts --list-templates"
+detect-project = "npx ts-node scripts/run.ts --detect"
+setup-mcp = "npx ts-node scripts/run.ts --setup"

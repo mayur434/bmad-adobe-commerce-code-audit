@@ -1,5 +1,5 @@
 ---
-name: bmad-code-scan-agent
+name: bmad-dept-code-scan-agent
 description: "Fast deterministic code scanner (part of BMAD DEPT Code Agent suite). Performs static analysis across multiple Adobe platforms and produces structured reports."
 ---
 

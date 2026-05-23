@@ -1,0 +1,19 @@
+[skill]
+name = "bmad-dept-code-impact-analysis-agent"
+description = "Code impact analysis for Commerce, AEMaaCS, and EDS projects. Evaluates blast radius, traces dependency chains, assesses risk for changes, upgrades, and patches."
+version = "1.0.0"
+
+[skill.tools]
+required = ["claude-code"]
+
+[skill.activation]
+keywords = ["impact", "blast radius", "what breaks", "dependency", "affected", "breaking changes", "upgrade risk", "patch risk", "trace dependencies", "change risk"]
+
+[skill.scripts]
+dispatcher = "scripts/run.py"
+requirements = "scripts/requirements.txt"
+
+[skill.commands]
+analyze = "python3 scripts/run.py"
+trace = "python3 scripts/run.py --trace"
+upgrade-risk = "python3 scripts/run.py --upgrade-risk"

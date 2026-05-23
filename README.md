@@ -68,7 +68,7 @@ AI-driven analysis that catches what scripts cannot:
 - Contextual performance issues (N+1 across multiple endpoints)
 - Configuration consistency (code expects config that doesn't exist)
 
-Uses platform-specific [rule packs](skills/bmad-code-audit-agent/resources/rule-packs/) and a multi-pass [detection strategy](skills/bmad-code-audit-agent/resources/shared/detection-strategy.md).
+Uses platform-specific [rule packs](skills/bmad-dept-code-audit-agent/resources/rule-packs/) and a multi-pass [detection strategy](skills/bmad-dept-code-audit-agent/resources/shared/detection-strategy.md).
 
 ---
 
@@ -77,7 +77,7 @@ Uses platform-specific [rule packs](skills/bmad-code-audit-agent/resources/rule-
 ```
 bmad-dept-code-agent/
 └── skills/
-    └── bmad-code-audit-agent/
+    └── bmad-dept-code-audit-agent/
         ├── SKILL.md              # AI agent instructions
         ├── GUIDE.md              # Human usage guide
         ├── customize.toml        # Skill metadata & commands
@@ -133,10 +133,10 @@ Fast deterministic scan → Excel report in seconds.
 
 ```bash
 # After BMAD install (from project root)
-npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce --name "My Project"
+npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce --name "My Project"
 
 # With database dump + BRD
-npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce \
+npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce \
   --db /path/to/dump.sql \
   --brd /path/to/requirements.docx \
   --name "Client Project"
@@ -161,7 +161,7 @@ Ask: **"full audit my project"**
 Run the TypeScript scanner directly without any BMAD setup:
 
 ```bash
-cd skills/bmad-code-audit-agent/scripts
+cd skills/bmad-dept-code-audit-agent/scripts
 
 npm install
 
@@ -206,21 +206,21 @@ Tier 1 (TypeScript/Node.js)      Tier 2 (LLM Skill)
 | File | Purpose |
 |------|---------|
 | [MANUAL.md](MANUAL.md) | **Team guide** — how to create a new BMAD DEPT module from scratch |
-| [SKILL.md](skills/bmad-code-audit-agent/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
-| [GUIDE.md](skills/bmad-code-audit-agent/GUIDE.md) | Human-readable setup and usage guide |
-| [customize.toml](skills/bmad-code-audit-agent/customize.toml) | Skill metadata, commands, activation keywords |
-| [module.yaml](skills/bmad-code-audit-agent/assets/module.yaml) | BMAD module manifest (code, agents, config vars) |
-| [module-help.csv](skills/bmad-code-audit-agent/assets/module-help.csv) | Capability registry (13-column format) |
-| [detection-strategy.md](skills/bmad-code-audit-agent/resources/shared/detection-strategy.md) | Multi-pass analysis strategy for Tier 2 |
-| [severity-model.md](skills/bmad-code-audit-agent/resources/shared/severity-model.md) | Severity scoring framework |
-| [confidence-scoring.md](skills/bmad-code-audit-agent/resources/shared/confidence-scoring.md) | Confidence calculation model |
-| [impact-analysis.md](skills/bmad-code-audit-agent/resources/shared/impact-analysis.md) | Impact assessment framework |
-| [commerce/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/commerce/rules.md) | Commerce platform rule pack |
-| [aemcs/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/aemcs/rules.md) | AEM Cloud Service rule pack |
-| [eds/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/eds/rules.md) | Edge Delivery Services rule pack |
-| [eds-commerce/rules.md](skills/bmad-code-audit-agent/resources/rule-packs/eds-commerce/rules.md) | EDS+Commerce hybrid rule pack |
-| [report-markdown.md](skills/bmad-code-audit-agent/templates/report-markdown.md) | Markdown report template |
-| [report-json.md](skills/bmad-code-audit-agent/templates/report-json.md) | JSON report template |
+| [SKILL.md](skills/bmad-dept-code-audit-agent/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
+| [GUIDE.md](skills/bmad-dept-code-audit-agent/GUIDE.md) | Human-readable setup and usage guide |
+| [customize.toml](skills/bmad-dept-code-audit-agent/customize.toml) | Skill metadata, commands, activation keywords |
+| [module.yaml](skills/bmad-dept-code-audit-agent/assets/module.yaml) | BMAD module manifest (code, agents, config vars) |
+| [module-help.csv](skills/bmad-dept-code-audit-agent/assets/module-help.csv) | Capability registry (13-column format) |
+| [detection-strategy.md](skills/bmad-dept-code-audit-agent/resources/shared/detection-strategy.md) | Multi-pass analysis strategy for Tier 2 |
+| [severity-model.md](skills/bmad-dept-code-audit-agent/resources/shared/severity-model.md) | Severity scoring framework |
+| [confidence-scoring.md](skills/bmad-dept-code-audit-agent/resources/shared/confidence-scoring.md) | Confidence calculation model |
+| [impact-analysis.md](skills/bmad-dept-code-audit-agent/resources/shared/impact-analysis.md) | Impact assessment framework |
+| [commerce/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/commerce/rules.md) | Commerce platform rule pack |
+| [aemcs/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/aemcs/rules.md) | AEM Cloud Service rule pack |
+| [eds/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/eds/rules.md) | Edge Delivery Services rule pack |
+| [eds-commerce/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/eds-commerce/rules.md) | EDS+Commerce hybrid rule pack |
+| [report-markdown.md](skills/bmad-dept-code-audit-agent/templates/report-markdown.md) | Markdown report template |
+| [report-json.md](skills/bmad-dept-code-audit-agent/templates/report-json.md) | JSON report template |
 
 ---
 

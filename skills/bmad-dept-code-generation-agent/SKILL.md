@@ -1,23 +1,27 @@
 ---
-name: bmad-code-generation-agent
-description: "AI-driven code generation agent (part of BMAD DEPT Code Agent suite). Leverages MCP servers for AEMaaCS and LLM skills for AMS to generate production-ready code following Adobe best practices."
+name: bmad-dept-code-generation-agent
+description: "AI-driven code generation agent (part of BMAD DEPT Code Agent suite). Generates production-ready code for AEMaaCS (MCP), AEM AMS (LLM skills), and Adobe Commerce (Magento 2) following platform best practices, security standards, and scalable architecture."
 ---
 
 # BMAD DEPT Code Agent — Generation Skill
 
 ## Purpose
 
-AI-driven code generation agent that produces production-ready AEM code by combining:
+AI-driven code generation agent that produces production-ready code by combining:
 1. **Live instance context** via AEM MCP servers (AEMaaCS only — components, templates, content structure)
-2. **LLM Skills** — Built-in generation patterns for AEM AMS (no MCP required)
+2. **LLM Skills** — Built-in generation patterns for AEM AMS and Adobe Commerce (no MCP required)
 3. **Project-level conventions** detected from the codebase (naming, packages, patterns)
 4. **Adobe best practices** from built-in resource packs
+5. **Security-first** — OWASP Top 10, Magento security checklist, input validation, ACL enforcement
 
 Generates all layers of an AEM project: Sling Models, HTL templates, OSGi services, Content Fragment Models, Experience Fragments, Editable Templates, Dispatcher configs, CI/CD pipelines, Workflows, Servlets, Schedulers, and unit tests.
+
+Generates all layers of an Adobe Commerce project: Modules, Plugins, Observers, API endpoints, GraphQL resolvers, Admin UI components, Storefront blocks/widgets, Console commands, Cron jobs, Message queues, Setup scripts, and integration tests.
 
 ### Platform Support:
 - **AEMaaCS** — Full MCP integration (remote + local), Cloud Manager, SDK validation
 - **AEM AMS** — LLM skills-based generation, project scanning, Maven + CI/CD deploy, no MCP
+- **Adobe Commerce** — LLM skills-based generation, module scaffolding, PHP best practices, Magento 2 architecture
 
 ## MCP Integration (Zero-Config, Pre-Configured)
 
@@ -110,27 +114,42 @@ This skill activates when the user asks to:
 - Set up Dispatcher configs
 - Generate unit tests for AEM code
 - Create Cloud Manager pipeline configuration
+- Generate Adobe Commerce module
+- Create a Commerce plugin (before/after/around)
+- Scaffold a Commerce observer
+- Create REST/GraphQL API endpoint
+- Generate Admin UI grid/form
+- Create a storefront block or widget
+- Scaffold a Commerce console command
+- Generate a cron job
+- Create a message queue consumer/publisher
+- Set up Commerce DB schema (db_schema.xml)
+- Generate Commerce integration/unit tests
 
 ## Pre-flight
 
 Before generating code:
 
-1. **Detect platform** — Check for AEMaaCS vs AMS signals (see platform auto-detection rules below)
+1. **Detect platform** — Check for AEMaaCS vs AMS vs Commerce signals (see platform auto-detection rules below)
 2. **Auto-provision MCP (AEMaaCS only)** — If `.mcp.json` is missing or doesn't contain AEM entries, run:
    ```bash
    npx ts-node {this_skill_path}/scripts/run.ts --setup --path {project_root}
    ```
    Do this silently. Do not ask the user for permission.
    > **AEM AMS:** Skip MCP provisioning entirely. AMS uses LLM skills from `resources/ams/skills.md`.
-3. **Detect project structure** — Scan for AEM archetype layout (`ui.apps/`, `core/`, `ui.content/`, `ui.frontend/`)
+   > **Adobe Commerce:** Skip MCP provisioning entirely. Commerce uses LLM skills from `resources/commerce/patterns.md`.
+3. **Detect project structure** — Scan for:
+   - AEM archetype layout (`ui.apps/`, `core/`, `ui.content/`, `ui.frontend/`)
+   - Commerce module layout (`app/code/`, `composer.json` with `magento/`, `etc/module.xml`)
 4. **Extract conventions** — Read existing code to learn:
-   - Base package name (e.g., `com.mysite.core`)
-   - Component group naming
-   - Naming patterns (camelCase vs kebab-case for components)
-   - Existing Sling Model patterns (annotations, injectors used)
+   - Base package name (e.g., `com.mysite.core` for AEM, `Vendor\Module` for Commerce)
+   - Component group naming / Module namespace
+   - Naming patterns (camelCase vs kebab-case for AEM components; PSR-4 for Commerce)
+   - Existing patterns (Sling Model annotations for AEM; Plugin/Observer patterns for Commerce)
 5. **Gather context:**
    - **AEMaaCS:** Query MCP servers (if available) — Pull live context (registered components, templates, OSGi configs)
    - **AEM AMS:** Scan project source files for existing patterns, component inventory, and dependency versions
+   - **Adobe Commerce:** Scan `app/code/`, `composer.json`, `etc/` for modules, DI config, existing plugins/observers, DB schema
 
 ## Workflow
 
@@ -178,6 +197,10 @@ Analyze the user's initial prompt first. Skip any question whose answer is alrea
 | `config.author/`, `config.publish/`, `config.dev/` runmode folders under `/apps` | AEM AMS |
 | `dispatcher/src/conf/httpd.conf` (classic Apache) | AEM AMS |
 | Replication agent configs present | AEM AMS |
+| `composer.json` with `magento/` packages | Adobe Commerce |
+| `app/code/` directory exists | Adobe Commerce |
+| `etc/module.xml` or `registration.php` in module | Adobe Commerce |
+| `bin/magento` exists at project root | Adobe Commerce |
 | Cannot determine | **Ask Q1** |
 
 #### Smart skipping rules:
@@ -492,10 +515,187 @@ Generate:
 
 > See `resources/ams/skills.md` → Skill 8 for templates.
 
+---
+
+## Adobe Commerce Workflow
+
+When platform is detected as Adobe Commerce, follow this workflow instead of the AEM workflow above.
+
+### Step 1: Resolve Generation Mode
+
+Adobe Commerce does NOT use MCP. All intelligence comes from:
+- **LLM Skills** → `resources/commerce/patterns.md` (generation patterns + templates)
+- **Security Rules** → `resources/commerce/security.md` (mandatory compliance)
+- **Project Scanning** → Static analysis of `app/code/`, `composer.json`, `etc/`
+
+### Step 2: Gather Commerce Project Context
+
+Scan the project to detect:
+
+| What to scan | Where to look | Purpose |
+|-------------|---------------|---------|
+| Existing modules | `app/code/{Vendor}/` | Detect vendor namespace, existing modules |
+| DI configuration | `etc/di.xml`, `etc/*/di.xml` | Existing plugins, preferences, types |
+| Events | `etc/events.xml`, `etc/*/events.xml` | Existing observer subscriptions |
+| DB schema | `etc/db_schema.xml` | Existing tables, avoid conflicts |
+| Web APIs | `etc/webapi.xml` | Existing endpoints, URL patterns |
+| ACL | `etc/acl.xml` | Existing access control resources |
+| Composer deps | `composer.json` | PHP version, Magento version, dependencies |
+| Admin routes | `etc/adminhtml/routes.xml` | Existing admin routes |
+| Frontend routes | `etc/frontend/routes.xml` | Existing storefront routes |
+| System config | `etc/adminhtml/system.xml` | Existing configuration sections |
+
+### Step 3: Interactive Intake (Commerce)
+
+Ask only what's missing from the user's prompt:
+
+```
+1. What to generate?
+   → [Module / Plugin / Observer / API / GraphQL / Admin Grid / Admin Form / Block / CLI Command / Cron / Queue / DB Schema / Tests / EAV Attribute / Config]
+   (Skip if obvious from prompt)
+
+2. Module namespace?
+   → {Vendor}\{Module} (e.g., Acme\CustomShipping)
+   (Auto-detect from existing app/code/ if possible)
+
+3. Target entity/class?
+   → For plugins: which class/method to intercept
+   → For observers: which event to listen to
+   → For APIs: endpoint path + HTTP method
+   (Skip if specified in prompt)
+
+4. Scope (area)?
+   → [global / frontend / adminhtml / webapi_rest / webapi_soap / crontab]
+   (Default: global unless context suggests otherwise)
+
+5. Deploy after generation?
+   → [Yes – run setup:upgrade + di:compile / No – generate code only]
+```
+
+### Step 4: Generate Code
+
+Follow the patterns in `resources/commerce/patterns.md` for the requested scope.
+Apply all rules from `resources/commerce/security.md`.
+
+**Every generated file MUST:**
+- Use `declare(strict_types=1)` at the top
+- Follow PSR-12 coding standards
+- Use constructor dependency injection (never ObjectManager)
+- Include proper PHP type declarations (param types, return types)
+- Pass `vendor/bin/phpcs --standard=Magento2` without errors
+
+### Step 5: Generate Tests
+
+For every service class, repository, or complex logic generated:
+- Unit test in `Test/Unit/` with mocked dependencies
+- Integration test skeleton in `Test/Integration/` (if requested)
+
+Follow test patterns in `resources/commerce/patterns.md` → Skill 17.
+
+### Step 6: Deploy (if requested)
+
+```bash
+bin/magento module:enable {Vendor}_{Module}
+bin/magento setup:upgrade
+bin/magento setup:di:compile
+bin/magento cache:flush
+```
+
+### Step 7: Validate
+
+| Check | Command |
+|-------|---------|
+| Module status | `bin/magento module:status {Vendor}_{Module}` |
+| DI compilation | `bin/magento setup:di:compile` (exit 0) |
+| DB schema | `bin/magento setup:db:status` |
+| Coding standards | `vendor/bin/phpcs --standard=Magento2 app/code/{Vendor}/{Module}` |
+| Unit tests | `vendor/bin/phpunit app/code/{Vendor}/{Module}/Test/Unit` |
+
+---
+
+## Commerce Generation Scopes
+
+All Commerce scopes reference `resources/commerce/patterns.md` for detailed templates and rules.
+
+### C1. Module Scaffolding
+Generate: `registration.php`, `etc/module.xml`, `composer.json`
+→ See patterns.md → Skill 1
+
+### C2. Plugin (Interceptor)
+Generate: Plugin class + `di.xml` registration
+→ See patterns.md → Skill 2
+
+### C3. Observer
+Generate: Observer class + `events.xml` subscription
+→ See patterns.md → Skill 3
+
+### C4. REST/SOAP API
+Generate: Service interface + implementation + `webapi.xml` + `acl.xml`
+→ See patterns.md → Skill 4
+
+### C5. GraphQL Resolver
+Generate: `schema.graphqls` + resolver class + data provider
+→ See patterns.md → Skill 5
+
+### C6. Admin UI Grid
+Generate: UI component listing XML + data provider + controller + layout + menu + ACL
+→ See patterns.md → Skill 6
+
+### C7. Admin UI Form
+Generate: UI component form XML + edit/save/delete controllers + data provider
+→ See patterns.md → Skill 7
+
+### C8. Storefront Block + Template
+Generate: Block (thin) + ViewModel + .phtml template + layout XML
+→ See patterns.md → Skill 8
+
+### C9. Console Command (CLI)
+Generate: Command class + `di.xml` registration
+→ See patterns.md → Skill 9
+
+### C10. Cron Job
+Generate: Cron class (with locking) + `crontab.xml`
+→ See patterns.md → Skill 10
+
+### C11. Message Queue
+Generate: Consumer + publisher + `communication.xml` + topology + consumer/publisher XML
+→ See patterns.md → Skill 11
+
+### C12. Declarative DB Schema
+Generate: `db_schema.xml` + whitelist JSON
+→ See patterns.md → Skill 12
+
+### C13. Data Patch
+Generate: Data patch class in `Setup/Patch/Data/`
+→ See patterns.md → Skill 13
+
+### C14. System Configuration
+Generate: `system.xml` + `config.xml` + Config helper class + ACL
+→ See patterns.md → Skill 14
+
+### C15. Repository Pattern (CRUD)
+Generate: Interface + model + resource model + collection + repository + DI preferences
+→ See patterns.md → Skill 15
+
+### C16. Frontend JavaScript
+Generate: RequireJS module + `requirejs-config.js` + KO template (if needed)
+→ See patterns.md → Skill 16
+
+### C17. Unit & Integration Tests
+Generate: PHPUnit tests + fixtures
+→ See patterns.md → Skill 17
+
+### C18. EAV Attribute
+Generate: Data patch creating product/customer/category EAV attribute
+→ See patterns.md → Skill 18
+
+---
+
 ## Error Handling
 
 - **AEMaaCS:** If MCP servers are not configured → proceed with project-level context only (no live instance data)
 - **AEM AMS:** No MCP expected — always uses LLM skills + project scanning
+- **Adobe Commerce:** No MCP expected — always uses LLM skills (`resources/commerce/patterns.md`) + project scanning
 - If project structure is non-standard → ask user to confirm paths
 - If naming conflict detected (via MCP or source scan) → warn and suggest alternative name
 - If base package can't be detected → ask user

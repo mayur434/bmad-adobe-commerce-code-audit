@@ -8,32 +8,32 @@ recommendedModules: [bmm]
 requiredModules: [core]
 
 agents:
-  - code: bmad-code-audit-agent
+  - code: bmad-dept-code-audit-agent
     name: Auditor
     title: Code Audit Specialist
     icon: "🔍"
     description: "Enterprise code auditor. Performs deterministic static analysis (42+ categories) and AI-driven semantic analysis across Commerce, AEM, and EDS platforms."
     team: software-development
 
-  - code: bmad-code-scan-agent
+  - code: bmad-dept-code-scan-agent
     name: Scanner
     title: Code Scan Specialist
     icon: "📡"
-    description: "Fast deterministic code scanner. Performs static analysis and produces structured reports (Excel/JSON)."
+    description: "Fast deterministic code scanner for Commerce, AEMaaCS, EDS, and hybrid projects. Performs static analysis and produces structured reports (Excel/JSON)."
     team: software-development
 
-  - code: bmad-code-generation-agent
+  - code: bmad-dept-code-generation-agent
     name: Generator
     title: Code Generation Specialist
     icon: "⚡"
-    description: "AI-driven code generation. Produces production-ready code following platform patterns and best practices."
+    description: "AI-driven code generation for AEMaaCS (MCP), AEM AMS, and Adobe Commerce (Magento 2). Produces production-ready code following platform patterns, security standards, and scalable architecture."
     team: software-development
 
-  - code: bmad-code-impact-analysis-agent
+  - code: bmad-dept-code-impact-analysis-agent
     name: Impact Analyst
     title: Code Impact Analysis Specialist
     icon: "💥"
-    description: "Code impact analysis. Evaluates blast radius, traces dependency chains, assesses risk for changes and upgrades."
+    description: "Code impact analysis for Commerce, AEMaaCS, and EDS projects. Evaluates blast radius, traces dependency chains, assesses risk for changes, upgrades, and patches."
     team: software-development
 
 # Configuration variables
@@ -61,7 +61,7 @@ post-install-notes: |
     Ask: "audit my project" or "scan my project" or "generate a component"
 
   Tier 1 (TypeScript scanner):
-    npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce
+    npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce
 
   Tier 2 (AI deep analysis):
     Triggered automatically when you ask the agent to audit.
