@@ -6,7 +6,7 @@ Two-tier enterprise code audit for **Adobe Commerce**, **AEM as a Cloud Service*
 
 | Tier | Method | Output | Speed |
 |------|--------|--------|-------|
-| **Tier 1** | Deterministic Python scanner | Excel report (42+ categories) | Seconds |
+| **Tier 1** | Deterministic TypeScript/Node.js scanner | Excel report (42+ categories) | Seconds |
 | **Tier 2** | LLM semantic analysis | Markdown/JSON narrative report | Minutes |
 
 ---
@@ -40,7 +40,7 @@ npx bmad-method install \
 After install, ask your agent: **"audit my project"**
 
 The agent will:
-1. Auto-install Python dependencies if missing
+1. Auto-install Node dependencies if missing
 2. Ask which mode you prefer (Scanner / LLM / Full Audit)
 3. Run the audit and produce the report
 
@@ -48,7 +48,7 @@ The agent will:
 
 ## What It Does
 
-### Tier 1 — Python Static Scanner
+### Tier 1 — TypeScript/Node.js Static Scanner
 
 Fast, deterministic scan that produces an enterprise Excel report:
 
@@ -99,16 +99,17 @@ bmad-code-audit/
         │   ├── report-markdown.md
         │   └── report-json.md
         └── scripts/
-            ├── run.py            # Multi-engine dispatcher
-            ├── requirements.txt
+            ├── run.ts            # Multi-engine dispatcher
+            ├── package.json      # Node dependencies
+            ├── tsconfig.json
             ├── engines/
-            │   ├── registry.py   # Engine auto-detection
+            │   ├── registry.ts   # Engine auto-detection
             │   ├── commerce/     # Full Commerce engine
             │   ├── aem/          # Planned
             │   ├── eds/          # Planned
             │   └── eds_commerce/ # Planned
             └── shared/
-                └── base.py       # Base engine class
+                └── base.ts       # Base engine class
 ```
 
 ---
@@ -132,10 +133,10 @@ Fast deterministic scan → Excel report in seconds.
 
 ```bash
 # After BMAD install (from project root)
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce --name "My Project"
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce --name "My Project"
 
 # With database dump + BRD
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce \
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce \
   --db /path/to/dump.sql \
   --brd /path/to/requirements.docx \
   --name "Client Project"
@@ -157,21 +158,21 @@ Ask: **"full audit my project"**
 
 ## Standalone Usage (Without BMAD)
 
-Run the Python scanner directly without any BMAD setup:
+Run the TypeScript scanner directly without any BMAD setup:
 
 ```bash
 cd skills/bmad-code-audit-agent/scripts
 
-pip install -r requirements.txt
+npm install
 
 # Auto-detect platform
-python3 run.py --path /path/to/your/project --name "Project Name"
+npx ts-node run.ts --path /path/to/your/project --name "Project Name"
 
 # Explicit engine
-python3 run.py --engine commerce --path /path/to/project
+npx ts-node run.ts --engine commerce --path /path/to/project
 
 # List available engines
-python3 run.py --list-engines
+npx ts-node run.ts --list-engines
 ```
 
 ---
@@ -179,13 +180,13 @@ python3 run.py --list-engines
 ## Architecture
 
 ```
-Tier 1 (Python Script)           Tier 2 (LLM Skill)
+Tier 1 (TypeScript/Node.js)      Tier 2 (LLM Skill)
 ┌──────────────────────┐        ┌──────────────────────────┐
 │  Deterministic       │        │  Semantic Analysis       │
 │  Static Analysis     │        │  (Rule Packs + AI)       │
 │                      │        │                          │
 │  • 42+ categories    │───────▶│  • Architectural flaws   │
-│  • Regex/AST scan    │ feeds  │  • Cross-file data flow  │
+│  • Regex scan        │ feeds  │  • Cross-file data flow  │
 │  • Excel report      │ into   │  • Business logic bugs   │
 │  • Seconds to run    │        │  • Contextual issues     │
 └──────────────────────┘        └──────────────────────────┘
@@ -195,9 +196,8 @@ Tier 1 (Python Script)           Tier 2 (LLM Skill)
 
 ## Prerequisites
 
-- **Node.js** v20.12+ (for BMAD installer)
-- **Python** 3.10+ (for Tier 1 scanner)
-- Python packages: `openpyxl`, `python-docx` (auto-installed by the agent)
+- **Node.js** v20.12+ (for BMAD installer and Tier 1 scanner)
+- Node packages: `exceljs`, `mammoth`, `fast-glob` (auto-installed via `npm install`)
 
 ---
 

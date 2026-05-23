@@ -9,8 +9,7 @@ Two-tier code audit system for enterprise projects.
 ### Prerequisites
 
 - Node.js v20.12+
-- Python 3.10+
-- pip (for `openpyxl`, `python-docx`)
+- npm (for `exceljs`, `mammoth`, `fast-glob`)
 - BMAD already initiated on your project
 
 ### Step 1: Install BMAD with this custom module
@@ -31,13 +30,13 @@ npx bmad-method install \
 
 After install, the skill lives at `.claude/skills/bmad-code-audit-agent/`.
 
-### Step 2: Install Python dependencies
+### Step 2: Install Node dependencies
 
 ```bash
-pip install -r .claude/skills/bmad-code-audit-agent/scripts/requirements.txt
+cd .claude/skills/bmad-code-audit-agent/scripts && npm install
 ```
 
-This installs: `openpyxl` (Excel reports), `python-docx` (BRD .docx parsing).
+This installs: `exceljs` (Excel reports), `mammoth` (BRD .docx parsing), `fast-glob` (file scanning).
 
 ### Step 3: Run the audit
 
@@ -48,25 +47,25 @@ Ask your agent:
 - "run a code review"
 - "scan my commerce code"
 
-The agent will use the SKILL.md instructions to run the Python scanner (Tier 1) and then perform AI deep analysis (Tier 2).
+The agent will use the SKILL.md instructions to run the TypeScript scanner (Tier 1) and then perform AI deep analysis (Tier 2).
 
 **Option B — Via CLI (Tier 1 only):**
 
 ```bash
 # Auto-detect platform
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path .
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path .
 
 # Explicit engine + name
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce --name "My Project"
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce --name "My Project"
 
 # Full audit: code + DB + BRD + patch
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce \
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce \
   --db /path/to/dump.sql \
   --brd /path/to/requirements.docx \
   --name "Client Project"
 
 # List engines
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --list-engines
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --list-engines
 ```
 
 ### Step 4: Find your report
@@ -89,13 +88,13 @@ If you want to run the scanner standalone without the full BMAD setup:
 cd /path/to/bmad-code-audit/skills/bmad-code-audit-agent/scripts
 
 # 1. Install dependencies
-pip install -r requirements.txt
+npm install
 
 # 2. Run an audit (auto-detects platform)
-python3 run.py --path /path/to/your/project
+npx ts-node run.ts --path /path/to/your/project
 
 # 3. Or specify the engine explicitly
-python3 run.py --engine commerce --path /path/to/project --name "My Project"
+npx ts-node run.ts --engine commerce --path /path/to/project --name "My Project"
 ```
 
 ---
@@ -103,13 +102,13 @@ python3 run.py --engine commerce --path /path/to/project --name "My Project"
 ## Architecture
 
 ```
-Tier 1 (Python Script)          Tier 2 (LLM Skill)
+Tier 1 (TypeScript/Node.js)      Tier 2 (LLM Skill)
 ┌─────────────────────┐        ┌─────────────────────────┐
 │  Deterministic      │        │  Semantic Analysis      │
 │  Static Analysis    │        │  (Rule Packs + AI)      │
 │                     │        │                         │
 │  • 42+ categories   │───────▶│  • Architectural flaws  │
-│  • Regex/AST scan   │ feeds  │  • Cross-file data flow │
+│  • Regex scan       │ feeds  │  • Cross-file data flow │
 │  • Excel report     │ into   │  • Business logic bugs  │
 │  • Seconds to run   │        │  • Contextual issues    │
 └─────────────────────┘        └─────────────────────────┘
@@ -128,7 +127,7 @@ Tier 1 (Python Script)          Tier 2 (LLM Skill)
 
 ```bash
 # List all engines
-python3 scripts/run.py --list-engines
+npx ts-node scripts/run.ts --list-engines
 ```
 
 ---
@@ -141,16 +140,16 @@ Fast deterministic scan → Excel report.
 
 ```bash
 # Commerce audit (full: code + DB + BRD + patch)
-python3 run.py --engine commerce --path /project
+npx ts-node run.ts --engine commerce --path /project
 
 # Commerce with specific options
-python3 run.py --engine commerce --path /project --name "Client" --db /path/dump.sql
+npx ts-node run.ts --engine commerce --path /project --name "Client" --db /path/dump.sql
 
 # Commerce — BRD impact analysis only
-python3 run.py --engine commerce --path /project --no-code-audit --brd /path/brd.txt
+npx ts-node run.ts --engine commerce --path /project --no-code-audit --brd /path/brd.txt
 
 # Commerce — bug impact analysis
-python3 run.py --engine commerce --path /project --bugs /path/bugs.xlsx
+npx ts-node run.ts --engine commerce --path /project --bugs /path/bugs.xlsx
 ```
 
 ### Mode B: Tier 2 Only (LLM Deep Analysis)
@@ -168,7 +167,7 @@ Invoke the BMAD skill via agent command — uses rule packs from `resources/rule
 ## Commerce Engine — Full CLI Reference
 
 ```bash
-python3 run.py --engine commerce [OPTIONS]
+npx ts-node run.ts --engine commerce [OPTIONS]
 
 OPTIONS:
   --path PATH          Adobe Commerce project root
@@ -228,25 +227,25 @@ Each engine has its own `config.json`. For commerce: `scripts/engines/commerce/c
    mkdir -p scripts/engines/myplatform/lib
    ```
 
-2. Create `scripts/engines/myplatform/audit.py` with a `main()` function:
-   ```python
-   def main():
-       # Parse args (--path, --name, --output at minimum)
-       # Run scan
-       # Generate report
-       pass
-
-   if __name__ == "__main__":
-       main()
+2. Create `scripts/engines/myplatform/audit.ts` with a `main()` function:
+   ```typescript
+   export async function main(): Promise<void> {
+     // Parse args (--path, --name, --output at minimum)
+     // Run scan
+     // Generate report
+   }
    ```
 
-3. Register detection logic in `scripts/engines/registry.py`:
-   ```python
-   def _detect_myplatform(path):
-       # Return True if path matches this platform
-       return os.path.isfile(os.path.join(path, "some-marker-file"))
+3. Register detection logic in `scripts/engines/registry.ts`:
+   ```typescript
+   import { register } from './registry';
+   import * as fs from 'fs';
+   import * as path from 'path';
 
-   register("myplatform", "My Platform Description", _detect_myplatform, "engines.myplatform.audit")
+   register('myplatform', 'My Platform Description',
+     (p: string) => fs.existsSync(path.join(p, 'some-marker-file')),
+     'engines/myplatform/audit'
+   );
    ```
 
 4. Optionally add a rule pack for Tier 2: `resources/rule-packs/myplatform/rules.md`
@@ -280,17 +279,16 @@ bmad-code-audit/                    # Module repository
 │           ├── templates/          # Tier 2 report templates
 │           │   ├── report-json.md
 │           │   └── report-markdown.md
-│           └── scripts/            # Tier 1 Python engines
-│               ├── run.py          # Unified dispatcher
-│               ├── requirements.txt
+│           └── scripts/            # Tier 1 TypeScript engines
+│               ├── run.ts          # Unified dispatcher
+│               ├── package.json    # Node dependencies
+│               ├── tsconfig.json   # TypeScript config
 │               ├── shared/         # Shared utilities
-│               │   ├── __init__.py
-│               │   └── base.py
+│               │   └── base.ts
 │               └── engines/
-│                   ├── __init__.py
-│                   ├── registry.py # Engine registration & detection
+│                   ├── registry.ts # Engine registration & detection
 │                   ├── commerce/   # ✅ Implemented
-│                   │   ├── audit.py
+│                   │   ├── audit.ts
 │                   │   ├── config.json
 │                   │   └── lib/
 │                   ├── aem/        # 🔲 Planned
@@ -303,7 +301,7 @@ When installed via BMAD into a project:
 your-project/
 ├── _bmad/
 │   ├── aca/                        # Module code = "aca"
-│   │   ├── scripts/run.py          # Tier 1 entry point
+│   │   ├── scripts/run.ts          # Tier 1 entry point
 │   │   ├── resources/              # Tier 2 rule packs
 │   │   └── ...
 │   └── _config/
@@ -318,13 +316,15 @@ your-project/
 ## Dependencies
 
 ```bash
-pip install -r scripts/requirements.txt
+cd scripts && npm install
 ```
 
-Current requirements:
-- `openpyxl>=3.1.0` — Excel report generation
-- `python-docx>=1.0.0` — BRD .docx parsing
-- `mcp[cli]>=1.0.0` — MCP server integration (optional)
+Current dependencies (see `scripts/package.json`):
+- `exceljs` — Excel report generation
+- `mammoth` — BRD .docx parsing
+- `fast-glob` — High-performance file scanning
+- `typescript` — TypeScript compiler
+- `ts-node` — TypeScript execution
 
 ---
 
@@ -334,5 +334,5 @@ Current requirements:
 |-------|-----|
 | `No app/code directory found` | Ensure --path points to the Magento root (where `app/`, `composer.json` live) |
 | `Could not auto-detect project type` | Use `--engine commerce` explicitly |
-| `ModuleNotFoundError: openpyxl` | Run `pip install -r scripts/requirements.txt` |
-| `Engine 'aem' not yet implemented` | The AEM engine is planned — contribute `engines/aem/audit.py` |
+| `Cannot find module 'exceljs'` | Run `cd scripts && npm install` |
+| `Engine 'aem' not yet implemented` | The AEM engine is planned — contribute `engines/aem/audit.ts` |

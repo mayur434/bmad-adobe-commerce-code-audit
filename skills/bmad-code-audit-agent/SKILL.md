@@ -1,6 +1,6 @@
 ---
 name: bmad-code-audit-agent
-description: "Two-tier code auditor for Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic Python static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis."
+description: "Two-tier code auditor for Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic TypeScript/Node.js static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis."
 ---
 
 # BMAD Code Audit Skill
@@ -9,16 +9,16 @@ description: "Two-tier code auditor for Commerce, AEMaaCS, EDS, and hybrid proje
 
 Two-tier code audit system for enterprise projects including AEM as a Cloud Service (AEMaaCS), Adobe Commerce (Magento), Edge Delivery Services (EDS), and EDS+Commerce hybrid implementations.
 
-### Tier 1 — Deterministic Static Analysis (Python Script)
+### Tier 1 — Deterministic Static Analysis (TypeScript/Node.js)
 
-Fast, reproducible scan using `scripts/run.py`. Produces an enterprise Excel report with:
+Fast, reproducible scan using `scripts/run.ts`. Produces an enterprise Excel report with:
 - 42-category code audit (security, performance, deprecated APIs, etc.)
 - Database dump analysis (schema, indexes, integrity)
 - BRD impact analysis (new requirements, feature enhancements)
 - Bug cascade & severity analysis (from Excel bug reports)
 - Patch/upgrade breaking change analysis
 
-**Invocation:** `python3 scripts/run.py --path <PROJECT_ROOT>`
+**Invocation:** `npx ts-node scripts/run.ts --path <PROJECT_ROOT>`
 
 ### Tier 2 — LLM Deep Semantic Analysis
 
@@ -43,11 +43,11 @@ This skill activates when the user asks to:
 
 ## Pre-flight: Auto-install Dependencies
 
-Before running any audit, check if Python dependencies are available. If not, install them automatically:
+Before running any audit, check if Node dependencies are installed. If not, install them automatically:
 
 ```bash
 # Check and install (works on macOS, Linux, Windows WSL)
-python3 -c "import openpyxl, docx" 2>/dev/null || pip3 install openpyxl python-docx --quiet
+cd .claude/skills/bmad-code-audit-agent/scripts && [ -d node_modules ] || npm install --silent
 ```
 
 Do NOT ask the user for permission to install these — they are required for the scanner to function. Just install silently if missing.
@@ -80,15 +80,15 @@ Use when the user wants a quick deterministic report:
 
 ```bash
 # Auto-detect platform and run (from project root)
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --name "Project Name"
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --name "Project Name"
 
 # Explicit engine selection
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --engine commerce --path .
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --engine aem --path .
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --engine eds --path .
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --engine commerce --path .
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --engine aem --path .
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --engine eds --path .
 
 # List available engines
-python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --list-engines
+npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --list-engines
 ```
 
 Output: Excel report in engine's `output/` directory

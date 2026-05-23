@@ -1,0 +1,173 @@
+# MCP Registry Configuration
+# ═══════════════════════════════════════════════════════════════════
+# PRE-CONFIGURED — consumers do NOT need to edit this file.
+# The module development team maintains these definitions.
+#
+# This file ships with the module and maps MCP servers → capabilities.
+# The agent reads this at runtime to know what tools are available.
+#
+# CAPABILITIES the agent uses:
+#   - component-discovery  : List/inspect AEM components
+#   - template-discovery   : List editable templates and policies
+#   - site-structure       : Browse content tree / site roots
+#   - content-crud         : Create, read, update, delete pages/CFs
+#   - asset-operations     : Import/search assets
+#   - osgi-config          : Read/list OSGi configurations
+#   - osgi-bundles         : Inspect bundle state and dependencies
+#   - content-validation   : Execute scripts to verify content
+#   - health-check         : Verify instance health
+#   - pipeline-management  : Cloud Manager pipelines, environments
+#   - brand-governance     : Evaluate content against brand rules
+#
+# PROVIDER MODES:
+#   - remote : Adobe-hosted MCP (OAuth, cloud instances)
+#   - local  : Community npx packages (basic auth, local SDK)
+#   - custom : Your org's proprietary server
+#
+# PRIORITY: Lower number = preferred. When both remote and local provide
+# the same capability, remote (Adobe official) wins by default.
+# ═══════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────────
+# ADOBE OFFICIAL — Remote MCP Servers (Cloud)
+# Base URL: https://mcp.adobeaemcloud.com/adobe/mcp/
+# Auth: OAuth via Adobe ID (browser-based sign-in)
+# ⚠️  AEMaaCS ONLY — these do NOT work with AEM AMS
+# Docs: https://experienceleague.adobe.com/en/docs/experience-manager-cloud-service/content/ai-in-aem/mcp-support/using-mcp-with-aem-as-a-cloud-service
+# ─────────────────────────────────────────────────────────────────
+
+[[providers]]
+name = "Adobe AEM Content"
+mode = "remote"
+mcp_server_key = "AEM-Content"
+url = "https://mcp.adobeaemcloud.com/adobe/mcp/content"
+auth = "oauth-adobe-id"
+capabilities = [
+  "component-discovery",
+  "template-discovery",
+  "site-structure",
+  "content-crud",
+  "asset-operations"
+]
+priority = 1
+
+[[providers]]
+name = "Adobe AEM Content (Read-Only)"
+mode = "remote"
+mcp_server_key = "AEM-Content-Readonly"
+url = "https://mcp.adobeaemcloud.com/adobe/mcp/content-readonly"
+auth = "oauth-adobe-id"
+capabilities = [
+  "component-discovery",
+  "template-discovery",
+  "site-structure"
+]
+priority = 1
+
+[[providers]]
+name = "Adobe Cloud Manager"
+mode = "remote"
+mcp_server_key = "AEM-CloudManager"
+url = "https://mcp.adobeaemcloud.com/adobe/mcp/cloudmanager"
+auth = "oauth-adobe-id"
+capabilities = [
+  "pipeline-management"
+]
+priority = 1
+
+[[providers]]
+name = "Adobe Experience Governance"
+mode = "remote"
+mcp_server_key = "AEM-Experience-Governance"
+url = "https://mcp.adobeaemcloud.com/adobe/mcp/experience-governance"
+auth = "oauth-adobe-id"
+capabilities = [
+  "brand-governance"
+]
+priority = 1
+
+# ─────────────────────────────────────────────────────────────────
+# COMMUNITY — Local MCP Servers (AEMaaCS Local SDK ONLY)
+# Run via npx, connect to local AEM SDK instance
+# Auth: Basic auth (admin/admin or env vars)
+# NOTE: AEM AMS does NOT use MCP — see resources/ams/skills.md
+# ─────────────────────────────────────────────────────────────────
+
+[[providers]]
+name = "AEM MCP Server (Local)"
+mode = "local"
+mcp_server_key = "AEM-Local"
+package = "aem-mcp-server"
+description = "Community server — pages, components, assets, workflows, CF, XF (easingthemes/aem-mcp-server)"
+auth = "basic"
+capabilities = [
+  "component-discovery",
+  "template-discovery",
+  "site-structure",
+  "content-crud",
+  "content-validation"
+]
+priority = 2
+
+[[providers]]
+name = "AEM Dev MCP Server (Local)"
+mode = "local"
+mcp_server_key = "AEM-Local-Dev"
+package = "aem-dev-mcp-server"
+description = "Community server — OSGi bundles, configs, health, Groovy (arkadiusz-rosiak/aem-dev-mcp)"
+auth = "basic"
+capabilities = [
+  "osgi-config",
+  "osgi-bundles",
+  "health-check",
+  "content-validation"
+]
+priority = 2
+
+# ─────────────────────────────────────────────────────────────────
+# CUSTOM — Add your org's proprietary MCP server below
+# Uncomment and configure. Set priority = 1 to override defaults.
+# ─────────────────────────────────────────────────────────────────
+# [[providers]]
+# name = "My Org AEM Tools"
+# mode = "custom"
+# mcp_server_key = "MY-AEM"
+# capabilities = ["component-discovery", "template-discovery", "osgi-config"]
+# priority = 1
+#
+#   [providers.tools]
+#   component-discovery = "my_list_components"
+#   template-discovery = "my_get_templates"
+#   osgi-config = "my_osgi_configs"
+
+# ─────────────────────────────────────────────────────────────────
+# Resolution Strategy
+# ─────────────────────────────────────────────────────────────────
+[resolution]
+# How the agent picks a provider when multiple serve the same capability:
+#   1. Intent detection from user prompt (overrides everything)
+#      - "deploy on local" → mode = local
+#      - "deploy to cloud" → mode = remote
+#      - No signal → default to prefer_mode below
+#   2. priority (lowest number wins within the resolved mode)
+#   3. first-declared wins (tie-breaker)
+#
+# Default mode when user prompt gives no deployment signal:
+#   "remote" = prefer Adobe cloud (production/staging)
+#   "local"  = prefer local SDK (development)
+#   "auto"   = use whatever responds (remote first, local fallback)
+prefer_mode = "local"
+
+[fallback]
+# When NO provider is available for a capability, fall back to:
+#   component-discovery  → scan ui.apps/.../components/
+#   template-discovery   → scan ui.content/.../templates/
+#   site-structure       → scan ui.content/.../content/
+#   osgi-config          → scan ui.config/.../osgiconfig/
+#   osgi-bundles         → read core/pom.xml
+#   content-crud         → cannot operate (error)
+#   pipeline-management  → cannot operate (error)
+#   health-check         → skip
+#   content-validation   → skip
+#   brand-governance     → skip
+enabled = true

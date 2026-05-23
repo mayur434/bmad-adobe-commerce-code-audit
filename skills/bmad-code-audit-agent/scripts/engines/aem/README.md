@@ -16,10 +16,10 @@ This engine will provide static analysis for AEM as a Cloud Service projects.
 
 ## To Implement
 
-Create `audit.py` in this directory with a `main()` function that accepts:
+Create `audit.ts` in this directory with a `main()` function that accepts:
 - `--path` — project root
 - `--name` — project name
 - `--output` — output directory
 - `--config` — config JSON path (optional)
 
-Follow the same pattern as `engines/commerce/audit.py`.
+Follow the same pattern as `engines/commerce/audit.ts`.

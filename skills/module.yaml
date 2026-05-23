@@ -1,7 +1,7 @@
 code: aca
 name: "BMAD Code Audit"
 header: "BMAD Code Audit: Two-tier static analysis + AI-driven deep audit"
-subheader: "Deterministic Python scanner (42+ categories) + LLM semantic analysis for Commerce, AEM, EDS"
+subheader: "Deterministic TypeScript/Node.js scanner (42+ categories) + LLM semantic analysis for Commerce, AEM, EDS"
 description: "Two-tier code audit for Commerce, AEMaaCS, EDS, and hybrid projects"
 default_selected: false
 recommendedModules: [bmm]
@@ -13,6 +13,27 @@ agents:
     title: Code Audit Specialist
     icon: "🔍"
     description: "Enterprise code auditor. Performs deterministic static analysis (42+ categories) and AI-driven semantic analysis across Commerce, AEM, and EDS platforms."
+    team: software-development
+
+  - code: bmad-code-scan-agent
+    name: Scanner
+    title: Code Scan Specialist
+    icon: "📡"
+    description: "Fast deterministic code scanner. Performs static analysis and produces structured reports (Excel/JSON)."
+    team: software-development
+
+  - code: bmad-code-generation-agent
+    name: Generator
+    title: Code Generation Specialist
+    icon: "⚡"
+    description: "AI-driven code generation. Produces production-ready code following platform patterns and best practices."
+    team: software-development
+
+  - code: bmad-code-impact-analysis-agent
+    name: Impact Analyst
+    title: Code Impact Analysis Specialist
+    icon: "💥"
+    description: "Code impact analysis. Evaluates blast radius, traces dependency chains, assesses risk for changes and upgrades."
     team: software-development
 
 # Configuration variables
@@ -39,10 +60,10 @@ post-install-notes: |
   Quick usage:
     Ask: "audit my project" or "run a code review"
 
-  Tier 1 (Python scanner):
-    python3 .claude/skills/bmad-code-audit-agent/scripts/run.py --path . --engine commerce
+  Tier 1 (TypeScript scanner):
+    npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce
 
   Tier 2 (AI deep analysis):
     Triggered automatically when you ask the agent to audit.
 
-  Prerequisites: Python 3.10+, pip install openpyxl python-docx
+  Prerequisites: Node.js v20.12+, cd scripts && npm install

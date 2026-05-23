@@ -1,0 +1,19 @@
+{
+  "name": "bmad-code-audit-scripts",
+  "version": "4.0.0",
+  "private": true,
+  "scripts": {
+    "audit": "npx ts-node run.ts",
+    "list-engines": "npx ts-node run.ts --list-engines"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "mammoth": "^1.8.0",
+    "fast-glob": "^3.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0"
+  }
+}

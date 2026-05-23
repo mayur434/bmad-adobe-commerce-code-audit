@@ -1,0 +1,16 @@
+{
+  "name": "bmad-code-generation-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "npx ts-node scripts/run.ts --setup",
+    "detect": "npx ts-node scripts/run.ts --detect",
+    "list-templates": "npx ts-node scripts/run.ts --list-templates",
+    "scaffold": "npx ts-node scripts/run.ts --scaffold"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0"
+  }
+}

@@ -8,7 +8,7 @@ A step-by-step guide for team members to build a new BMAD custom module from scr
 
 A BMAD custom module is a self-contained skill package that extends the BMAD agent system. It lives in its own repo and gets installed into any project via `npx bmad-method install --custom-source`.
 
-**What we built as reference:** `bmad-code-audit-agent` — a two-tier code auditor with a Python scanner + LLM deep analysis.
+**What we built as reference:** `bmad-code-audit-agent` — a two-tier code auditor with a TypeScript scanner + LLM deep analysis.
 
 ---
 
@@ -31,15 +31,14 @@ your-module-repo/
 │       │   └── module-help.csv  ← Copy of top-level module-help.csv
 │       ├── resources/           ← Reference data the agent/scripts use
 │       ├── templates/           ← Output templates (reports, etc.)
-│       └── scripts/             ← Executable code (Python, Node, etc.)
-│           ├── run.py           ← Main entry point
-│           ├── requirements.txt ← Dependencies
+│       └── scripts/             ← Executable code (TypeScript, Node, etc.)
+│           ├── run.ts           ← Main entry point
+│           ├── package.json     ← Dependencies
+│           ├── tsconfig.json    ← TypeScript config
 │           ├── engines/         ← Pluggable engine modules
-│           │   ├── __init__.py
-│           │   └── registry.py
+│           │   └── registry.ts
 │           └── shared/          ← Shared utilities
-│               ├── __init__.py
-│               └── base.py
+│               └── base.ts
 ```
 
 > **Rule:** The `skills/` folder is what `--custom-source` points to. Everything is nested under it.
@@ -126,16 +125,16 @@ required = ["claude-code"]     # Which AI tools support this skill
 keywords = ["audit", "scan", "review", "check"]  # Trigger words
 
 [skill.scripts]
-dispatcher = "scripts/run.py"
-requirements = "scripts/requirements.txt"
+dispatcher = "scripts/run.ts"
+package = "scripts/package.json"
 
 [skill.commands]
 # Define named commands (referenced by module-help.csv actions)
-main-action = "python3 scripts/run.py"
-quick = "python3 scripts/run.py --quick"
+main-action = "npx ts-node scripts/run.ts"
+quick = "npx ts-node scripts/run.ts --quick"
 deep = "skill"                 # Means: use LLM with skill instructions
 full = "quick+skill"           # Combined: run script then LLM
-list-modes = "python3 scripts/run.py --list-modes"
+list-modes = "npx ts-node scripts/run.ts --list-modes"
 ```
 
 ### 2.4 `skills/your-skill-name/SKILL.md` — The Brain
@@ -190,7 +189,7 @@ What to do when things fail.
 ### 2.5 `skills/your-skill-name/GUIDE.md` — Human Docs
 
 Setup instructions for humans. Include:
-- Prerequisites (Node, Python, etc.)
+- Prerequisites (Node.js v20+)
 - Install command
 - CLI usage examples
 - Where to find output
@@ -216,73 +215,76 @@ Report templates with `{{PLACEHOLDER}}` variables:
 
 ### 2.8 `scripts/` — Executable Code
 
-#### `run.py` — Dispatcher Pattern
+#### `run.ts` — Dispatcher Pattern
 
 Use a dispatcher that auto-detects context and routes to the right engine:
 
-```python
-#!/usr/bin/env python3
-import argparse, sys, os
+```typescript
+import { resolve, dirname } from 'path';
+import { detectPlatform, getEngine, listEngines } from './engines/registry';
 
-SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, SCRIPTS_DIR)
+const SCRIPTS_DIR = dirname(resolve(__filename));
 
-from engines.registry import detect_platform, get_engine, list_engines
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const engineArg = args.find((_, i, a) => a[i - 1] === '--engine');
+  const pathArg = args.find((_, i, a) => a[i - 1] === '--path');
+  const listEnginesFlag = args.includes('--list-engines');
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--engine", default=None)
-    parser.add_argument("--path", default=None)
-    parser.add_argument("--list-engines", action="store_true")
-    args, remaining = parser.parse_known_args()
+  // Auto-detect or use explicit engine
+  // Dispatch to engines/<platform>/audit.ts
+}
 
-    # Auto-detect or use explicit engine
-    # Dispatch to engines/<platform>/audit.py
-    ...
-
-if __name__ == "__main__":
-    main()
+main().catch(console.error);
 ```
 
-#### `engines/registry.py` — Engine Registration
+#### `engines/registry.ts` — Engine Registration
 
-```python
-ENGINES = {}
+```typescript
+interface EngineEntry {
+  description: string;
+  detect: (path: string) => boolean;
+  module: string;
+}
 
-def register(platform_id, description, detect_fn, module_path):
-    ENGINES[platform_id] = {
-        "description": description,
-        "detect": detect_fn,
-        "module": module_path,
-    }
+const ENGINES: Record<string, EngineEntry> = {};
 
-def detect_platform(project_path):
-    return [pid for pid, eng in ENGINES.items() if eng["detect"](project_path)]
+export function register(platformId: string, description: string, detectFn: (path: string) => boolean, modulePath: string): void {
+  ENGINES[platformId] = { description, detect: detectFn, module: modulePath };
+}
 
-# Register your engines
-register("my-engine", "Description", _detect_fn, "engines.my_engine.audit")
+export function detectPlatform(projectPath: string): string[] {
+  return Object.entries(ENGINES)
+    .filter(([_, eng]) => eng.detect(projectPath))
+    .map(([pid]) => pid);
+}
+
+// Register your engines
+register('my-engine', 'Description', detectFn, 'engines/my_engine/audit');
 ```
 
-#### `shared/base.py` — Engine Interface
+#### `shared/base.ts` — Engine Interface
 
-```python
-class BaseAuditEngine:
-    PLATFORM_ID = "base"
-    PLATFORM_NAME = "Base Engine"
+```typescript
+export abstract class BaseAuditEngine {
+  static PLATFORM_ID = 'base';
+  static PLATFORM_NAME = 'Base Engine';
 
-    def __init__(self, project_root, config=None):
-        self.project_root = project_root
-        self.config = config or {}
+  protected projectRoot: string;
+  protected config: Record<string, any>;
 
-    @staticmethod
-    def detect(path):
-        raise NotImplementedError
+  constructor(projectRoot: string, config: Record<string, any> = {}) {
+    this.projectRoot = projectRoot;
+    this.config = config;
+  }
 
-    def scan(self):
-        raise NotImplementedError
+  static detect(path: string): boolean {
+    throw new Error('Not implemented');
+  }
 
-    def generate_report(self, findings, output_path):
-        raise NotImplementedError
+  abstract scan(): Promise<any>;
+  abstract generateReport(findings: any, outputPath: string): Promise<void>;
+}
 ```
 
 ---
@@ -314,7 +316,7 @@ target-project/.claude/skills/your-skill-name/
 ### Test the script independently
 
 ```bash
-python3 .claude/skills/your-skill-name/scripts/run.py --path . --list-engines
+npx ts-node .claude/skills/your-skill-name/scripts/run.ts --path . --list-engines
 ```
 
 ### Test via the agent
@@ -330,9 +332,9 @@ Ask the agent one of your activation keywords and confirm it picks up the skill.
 - [ ] `customize.toml` — skill name matches folder name, all commands are valid
 - [ ] `SKILL.md` — frontmatter `name` matches folder name, all file paths relative
 - [ ] `GUIDE.md` — install command uses correct `--custom-source` path
-- [ ] `requirements.txt` — all Python deps listed
-- [ ] `scripts/run.py` — runs standalone without errors (`python3 run.py --help`)
-- [ ] `engines/registry.py` — all engines registered, detection functions tested
+- [ ] `package.json` — all Node dependencies listed
+- [ ] `scripts/run.ts` — runs standalone without errors (`npx ts-node run.ts --help`)
+- [ ] `engines/registry.ts` — all engines registered, detection functions tested
 - [ ] `assets/` — contains copies of `module.yaml` and `module-help.csv`
 - [ ] Git repo has clean README explaining what the module does
 
@@ -342,10 +344,10 @@ Ask the agent one of your activation keywords and confirm it picks up the skill.
 
 ### Adding a new engine
 
-1. Create `scripts/engines/my_platform/audit.py`
+1. Create `scripts/engines/my_platform/audit.ts`
 2. Implement `BaseAuditEngine` subclass
-3. Add detection function to `registry.py`
-4. Register it: `register("my-platform", "Description", _detect_fn, "engines.my_platform.audit")`
+3. Add detection function to `registry.ts`
+4. Register it: `register('my-platform', 'Description', detectFn, 'engines/my_platform/audit')`
 5. Add rule pack: `resources/rule-packs/my-platform/rules.md`
 
 ### Adding configuration variables
@@ -358,7 +360,7 @@ Ask the agent one of your activation keywords and confirm it picks up the skill.
 
 In `SKILL.md` pre-flight section:
 ```bash
-python3 -c "import my_dep" 2>/dev/null || pip3 install my-dep --quiet
+cd .claude/skills/your-skill-name/scripts && [ -d node_modules ] || npm install --silent
 ```
 
 The agent runs this silently before any operation.
@@ -390,9 +392,9 @@ mkdir -p skills/$MODULE_NAME/{assets,resources,templates,scripts/{engines,shared
 touch skills/module.yaml skills/module-help.csv
 touch skills/$MODULE_NAME/{SKILL.md,GUIDE.md,customize.toml}
 touch skills/$MODULE_NAME/assets/{module.yaml,module-help.csv}
-touch skills/$MODULE_NAME/scripts/{run.py,requirements.txt}
-touch skills/$MODULE_NAME/scripts/engines/{__init__.py,registry.py}
-touch skills/$MODULE_NAME/scripts/shared/{__init__.py,base.py}
+touch skills/$MODULE_NAME/scripts/{run.ts,package.json,tsconfig.json}
+touch skills/$MODULE_NAME/scripts/engines/registry.ts
+touch skills/$MODULE_NAME/scripts/shared/base.ts
 echo "# $MODULE_NAME" > README.md
 ```
 

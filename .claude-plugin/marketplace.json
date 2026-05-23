@@ -13,7 +13,10 @@
       "description": "Two-tier code audit for Commerce, AEMaaCS, EDS, and hybrid projects.",
       "version": "2.0.0",
       "skills": [
-        "./skills/bmad-code-audit-agent"
+        "./skills/bmad-code-audit-agent",
+        "./skills/bmad-code-scan-agent",
+        "./skills/bmad-code-generation-agent",
+        "./skills/bmad-code-impact-analysis-agent"
       ]
     }
   ]

@@ -1,0 +1,21 @@
+[skill]
+name = "bmad-code-generation-agent"
+description = "AI-driven AEMaaCS code generation. Leverages AEM MCP servers for live instance context and produces production-ready code (Sling Models, HTL, OSGi, CF Models, XF, Templates, Dispatcher, Cloud Manager, Tests)."
+version = "1.0.0"
+
+[skill.tools]
+required = ["claude-code"]
+
+[skill.activation]
+keywords = ["generate", "create component", "scaffold", "sling model", "htl", "osgi service", "content fragment model", "experience fragment", "editable template", "dispatcher config", "cloud manager", "unit test", "aem component"]
+
+[skill.scripts]
+dispatcher = "scripts/run.ts"
+package = "scripts/package.json"
+
+[skill.commands]
+generate = "skill"
+scaffold = "npx ts-node scripts/run.ts --scaffold"
+list-templates = "npx ts-node scripts/run.ts --list-templates"
+detect-project = "npx ts-node scripts/run.ts --detect"
+setup-mcp = "npx ts-node scripts/run.ts --setup"

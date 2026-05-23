@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "_comment_adobe": "── Adobe Official (Remote/Cloud) ──────────────────────────────────",
+
+    "AEM-Content": {
+      "url": "https://mcp.adobeaemcloud.com/adobe/mcp/content"
+    },
+    "AEM-Content-Readonly": {
+      "url": "https://mcp.adobeaemcloud.com/adobe/mcp/content-readonly"
+    },
+    "AEM-CloudManager": {
+      "url": "https://mcp.adobeaemcloud.com/adobe/mcp/cloudmanager"
+    },
+    "AEM-Experience-Governance": {
+      "url": "https://mcp.adobeaemcloud.com/adobe/mcp/experience-governance"
+    },
+
+    "_comment_local": "── Local AEM SDK (Community) ───────────────────────────────────────",
+
+    "AEM-Local": {
+      "command": "npx",
+      "args": ["-y", "aem-mcp-server", "-t", "stdio", "-H", "${AEM_HOST:-http://localhost:4502}", "-u", "${AEM_USER:-admin}", "-p", "${AEM_PASSWORD:-admin}"]
+    },
+    "AEM-Local-Dev": {
+      "command": "npx",
+      "args": ["-y", "aem-dev-mcp-server"],
+      "env": {
+        "AEM_INSTANCES_CONFIG_PATH": "${AEM_INSTANCES_CONFIG:-~/aem-instances.yaml}"
+      }
+    }
+  }
+}
