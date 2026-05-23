@@ -84,11 +84,78 @@ flowchart TD
 
 ---
 
-### Extending the Engine Layer — How It Works
+### Project Structure — In Detail
 
-Each agent's Tier 1 uses a **pluggable TypeScript engine architecture**. The Commerce engine is the reference implementation (benchmark). To add a new platform, you replicate this pattern.
+#### How BMAD Framework + DCA Module Connect
 
-#### Benchmark: Adobe Commerce Engine
+```
+your-project/                          ← Your Adobe Commerce / AEM / EDS project
+├── .claude/
+│   └── skills/                        ← BMAD installs skills here
+│       ├── bmad-dept-code-audit-agent/
+│       ├── bmad-dept-code-generation-agent/
+│       ├── bmad-dept-code-test-coverage-agent/
+│       ├── bmad-dept-code-impact-analysis-agent/
+│       └── bmad-dept-code-scan-agent/
+├── .bmad/
+│   └── mcp-registry.toml             ← MCP server config (Code Gen)
+├── .mcp.json                          ← IDE MCP connections
+├── .env                               ← Platform credentials (gitignored)
+└── [your project files]
+```
+
+The BMAD installer (`npx bmad-method install`) reads our `module.yaml` + `marketplace.json` and deploys each agent skill into the target project's `.claude/skills/` folder.
+
+#### DCA Module Source Layout
+
+```
+bmad-dept-code-agent/                  ← This repository (the custom module)
+├── README.md                          ← You are here
+├── MANUAL.md                          ← Operational guide
+├── PROMPTS.md                         ← Full prompt reference
+└── skills/
+    ├── module.yaml                    ← Module manifest (agents list, config vars)
+    ├── module-help.csv                ← Menu/capability registry
+    │
+    └── bmad-dept-code-<agent>/        ← Each agent follows this structure ↓
+        ├── SKILL.md                   ← AI instructions (activation, workflow, modes)
+        ├── GUIDE.md                   ← Human instructions (setup, examples)
+        ├── customize.toml             ← Activation keywords, commands, scripts
+        ├── assets/                    ← Module registry (module-help.csv, module.yaml)
+        ├── resources/                 ← Knowledge base (rule packs, strategies)
+        ├── templates/                 ← Output templates (report-json.md, report-markdown.md)
+        └── scripts/                   ← TypeScript Tier 1 engine
+            ├── run.ts                 ← CLI dispatcher (entry point)
+            ├── package.json           ← Node.js dependencies
+            ├── tsconfig.json          ← TypeScript config
+            ├── shared/
+            │   └── base.ts            ← Abstract base class / shared interfaces
+            └── engines/
+                ├── registry.ts        ← Platform auto-detection + engine resolution
+                ├── commerce/          ← Adobe Commerce engine (✅ implemented in Audit)
+                ├── aem/               ← AEMaaCS engine (🔲 placeholder)
+                ├── eds/               ← EDS engine (🔲 placeholder)
+                └── eds_commerce/      ← EDS+Commerce hybrid (🔲 placeholder)
+```
+
+#### File Roles Explained
+
+| File | Who Reads It | Purpose |
+|------|:------------:|---------|
+| `SKILL.md` | AI Agent | Workflow instructions, activation triggers, operating modes |
+| `GUIDE.md` | Human | Setup steps, usage examples, troubleshooting |
+| `customize.toml` | BMAD Framework | Activation keywords, named commands, script paths |
+| `assets/module.yaml` | BMAD Installer | Agent metadata for module registry |
+| `assets/module-help.csv` | BMAD Help | Capabilities listing for `bmad-help` queries |
+| `resources/` | AI Agent (Tier 2) | Rule packs, detection strategies, scoring models |
+| `templates/` | Tier 1 Engine | Output format skeletons (JSON, Markdown) |
+| `scripts/run.ts` | CLI / Agent | Entry point — arg parsing, engine dispatch |
+| `scripts/shared/base.ts` | Engine devs | Abstract class that all platform engines extend |
+| `scripts/engines/registry.ts` | Dispatcher | Maps platform IDs → detection logic → engine modules |
+
+#### Commerce Engine (Reference Implementation)
+
+The Audit agent's Commerce engine is the fully-implemented benchmark:
 
 ```
 scripts/engines/commerce/
@@ -96,14 +163,14 @@ scripts/engines/commerce/
 ├── config.json           ← Project-specific overrides (paths, thresholds)
 └── lib/
     ├── scanner/
-    │   ├── index.ts      ← Main scanner class (orchestrates 42+ scan categories)
+    │   ├── index.ts      ← Main scanner class (42+ scan categories)
     │   ├── types.ts      ← Finding, FindingsMap, Thresholds interfaces
     │   ├── context.ts    ← File discovery (PHP, XML, PHTML via fast-glob)
-    │   ├── scans-code.ts     ← Security, Performance, Deprecated, Caching...
-    │   ├── scans-arch.ts     ← DI, Plugins, Crons, GraphQL, Config...
-    │   ├── scans-infra.ts    ← Cloud, PHP deep, Observers, Metrics...
-    │   ├── scans-business.ts ← Business logic, MSI, Admin security...
-    │   ├── scans-quality.ts  ← Standards, Validation, Compat, XSD...
+    │   ├── scans-code.ts     ← Security, Performance, Deprecated, Caching
+    │   ├── scans-arch.ts     ← DI, Plugins, Crons, GraphQL, Config
+    │   ├── scans-infra.ts    ← Cloud, PHP deep, Observers, Metrics
+    │   ├── scans-business.ts ← Business logic, MSI, Admin security
+    │   ├── scans-quality.ts  ← Standards, Validation, Compat, XSD
     │   └── db-analysis.ts    ← SQL dump parsing, schema validation
     ├── brd_analyzer.ts   ← BRD requirement → code impact mapping
     ├── brd_parser.ts     ← .docx BRD document parser
@@ -114,27 +181,12 @@ scripts/engines/commerce/
     └── styles.ts         ← Excel styling constants
 ```
 
-#### How to Add a New Engine
+#### Adding a New Platform Engine
 
-1. **Create the engine folder:** `scripts/engines/<platform>/`
-2. **Implement the interface** from `shared/base.ts`:
-   ```typescript
-   // shared/base.ts exposes:
-   export interface AuditEngine {
-     readonly PLATFORM_ID: string;
-     readonly PLATFORM_NAME: string;
-     detect(path: string): boolean;
-     scan(): FindingsMap;
-     generateReport(findings: FindingsMap, outputPath: string): Promise<void>;
-   }
-   ```
-3. **Register in `engines/registry.ts`:**
-   ```typescript
-   register("your-platform", "Description", detectFn, "engines/your-platform/audit");
-   ```
-4. **Auto-detection** — implement a `detect()` function that checks for platform-specific markers (e.g., `pom.xml` + `ui.apps` for AEM).
-
-The dispatcher (`run.ts`) handles everything else — CLI parsing, engine resolution, output routing. Your engine just needs to implement `detect()`, `scan()`, and `generateReport()`.
+1. Create `scripts/engines/<platform>/`
+2. Extend the abstract base class from `shared/base.ts`
+3. Register in `engines/registry.ts` with a `detect()` function
+4. The dispatcher (`run.ts`) handles the rest — CLI parsing, engine resolution, output routing
 
 ---
 
@@ -304,37 +356,6 @@ show me all CRITICAL severity items
 create a fix plan for the critical items
 estimate effort to fix all HIGH and CRITICAL findings
 ```
-
----
-
-## Folder Structure
-
-```
-bmad-dept-code-agent/
-├── README.md                         ← You are here
-├── MANUAL.md                         ← Operational guide
-├── PROMPTS.md                        ← Full prompt reference
-└── skills/
-    ├── module.yaml                   ← BMAD module manifest
-    ├── module-help.csv               ← Menu/capability registry
-    ├── bmad-dept-code-audit-agent/
-    ├── bmad-dept-code-generation-agent/
-    ├── bmad-dept-code-test-coverage-agent/
-    ├── bmad-dept-code-impact-analysis-agent/
-    └── bmad-dept-code-scan-agent/
-```
-
-Each skill folder contains:
-
-| File | Role |
-|------|------|
-| `SKILL.md` | Instructions TO the AI agent — workflows, modes, triggers |
-| `GUIDE.md` | Instructions FOR humans — setup, examples |
-| `customize.toml` | Activation keywords, named commands, script paths |
-| `assets/` | Module manifest + capability registry |
-| `resources/` | Rule packs, scoring models, detection strategies |
-| `templates/` | Report output templates |
-| `scripts/` | TypeScript engines |
 
 ---
 
