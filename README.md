@@ -1,8 +1,8 @@
-# BMAD Code Audit — Custom Module
+# BMAD DEPT Code Agent
 
-[![GitHub](https://img.shields.io/badge/GitHub-mayur434%2Fbmad--adobe--commerce--code--audit-blue)](https://github.com/mayur434/bmad-adobe-commerce-code-audit)
+[![GitHub](https://img.shields.io/badge/GitHub-mayur434%2Fbmad--dept--code--agent-blue)](https://github.com/mayur434/bmad-dept-code-agent)
 
-Two-tier enterprise code audit for **Adobe Commerce**, **AEM as a Cloud Service**, **Edge Delivery Services**, and **EDS+Commerce** hybrid projects.
+Multi-agent AI suite for **Adobe Commerce**, **AEM as a Cloud Service**, **Edge Delivery Services**, and **EDS+Commerce** projects — code audit, generation, impact analysis, and scanning.
 
 | Tier | Method | Output | Speed |
 |------|--------|--------|-------|
@@ -21,7 +21,7 @@ cd /path/to/your/project
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source https://github.com/mayur434/bmad-adobe-commerce-code-audit.git \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git \
   --tools claude-code \
   --yes
 ```
@@ -32,7 +32,7 @@ npx bmad-method install \
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source /path/to/bmad-code-audit/skills \
+  --custom-source /path/to/bmad-dept-code-agent/skills \
   --tools claude-code \
   --yes
 ```
@@ -75,7 +75,7 @@ Uses platform-specific [rule packs](skills/bmad-code-audit-agent/resources/rule-
 ## Folder Structure
 
 ```
-bmad-code-audit/
+bmad-dept-code-agent/
 └── skills/
     └── bmad-code-audit-agent/
         ├── SKILL.md              # AI agent instructions
@@ -205,7 +205,7 @@ Tier 1 (TypeScript/Node.js)      Tier 2 (LLM Skill)
 
 | File | Purpose |
 |------|---------|
-| [MANUAL.md](MANUAL.md) | **Team guide** — how to create a new BMAD custom module from scratch |
+| [MANUAL.md](MANUAL.md) | **Team guide** — how to create a new BMAD DEPT module from scratch |
 | [SKILL.md](skills/bmad-code-audit-agent/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
 | [GUIDE.md](skills/bmad-code-audit-agent/GUIDE.md) | Human-readable setup and usage guide |
 | [customize.toml](skills/bmad-code-audit-agent/customize.toml) | Skill metadata, commands, activation keywords |

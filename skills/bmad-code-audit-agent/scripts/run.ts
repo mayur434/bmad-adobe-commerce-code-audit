@@ -1,7 +1,7 @@
 #!/usr/bin/env npx ts-node
 /**
- * BMAD Code Audit — Unified Dispatcher
- * =======================================
+ * BMAD DEPT Code Agent — Unified Dispatcher
+ * ============================================
  * Single entry point for all platform-specific audit engines.
  *
  * Auto-detects project type or accepts explicit --engine flag.
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   }
 
   if (args.help && !args.engine) {
-    console.log("BMAD Code Audit — Unified Dispatcher\n");
+    console.log("BMAD DEPT Code Agent — Unified Dispatcher\n");
     console.log("Usage:");
     console.log("  npx ts-node run.ts --path <project>              Auto-detect and audit");
     console.log("  npx ts-node run.ts --engine <name> --path <path> Explicit engine");

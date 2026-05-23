@@ -1,4 +1,4 @@
-# BMAD Code Audit — Prompt Reference
+# BMAD DEPT Code Agent — Prompt Reference
 
 All supported prompts grouped by **Agent** and **Platform**. Only implemented features are listed.
 

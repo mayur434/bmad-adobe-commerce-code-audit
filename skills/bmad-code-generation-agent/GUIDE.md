@@ -21,7 +21,7 @@ cd /path/to/your/aem-project
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source /path/to/bmad-code-audit/skills \
+  --custom-source /path/to/bmad-dept-code-agent/skills \
   --tools claude-code \
   --yes
 ```

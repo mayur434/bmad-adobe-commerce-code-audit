@@ -1,9 +1,9 @@
 ---
 name: bmad-code-audit-agent
-description: "Two-tier code auditor for Commerce, AEMaaCS, EDS, and hybrid projects. Tier 1: deterministic TypeScript/Node.js static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis."
+description: "Two-tier code auditor (part of BMAD DEPT Code Agent suite). Tier 1: deterministic TypeScript/Node.js static analysis (42+ categories, Excel report). Tier 2: LLM-driven deep semantic analysis for Commerce, AEMaaCS, EDS, and hybrid projects."
 ---
 
-# BMAD Code Audit Skill
+# BMAD DEPT Code Agent — Audit Skill
 
 ## Purpose
 

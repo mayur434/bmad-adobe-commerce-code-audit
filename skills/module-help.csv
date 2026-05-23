@@ -1,13 +1,13 @@
 module,skill,display-name,menu-code,description,action,args,phase,preceded-by,followed-by,required,output-location,outputs
-BMAD Code Audit,_meta,,,,,,,,,false,https://github.com/bmad-code-org/bmad-code-audit,
-BMAD Code Audit,bmad-code-audit-agent,Code Audit,AU,Run two-tier code audit (TypeScript scanner + AI deep analysis).,audit,,anytime,,,false,{audit_output},audit report|excel report
-BMAD Code Audit,bmad-code-audit-agent,Scan Only,SC,Run Tier 1 deterministic TypeScript scanner only.,scan,,anytime,,,false,{audit_output},excel report
-BMAD Code Audit,bmad-code-audit-agent,Deep Audit,DA,Run Tier 2 AI semantic analysis only.,deep-audit,,anytime,bmad-code-audit-agent:scan,,false,{audit_output},markdown report
-BMAD Code Audit,bmad-code-audit-agent,List Engines,LE,Show available audit engines (commerce/aem/eds).,list-engines,,anytime,,,false,,engine list
-BMAD Code Audit,bmad-code-scan-agent,Code Scan,CS,Run fast deterministic static analysis scan.,scan,,anytime,,,false,{audit_output},excel report
-BMAD Code Audit,bmad-code-scan-agent,Quick Scan,QS,Run quick scan mode.,scan-quick,,anytime,,,false,{audit_output},scan report
-BMAD Code Audit,bmad-code-generation-agent,Generate Code,GC,Generate production-ready code from specifications.,generate,,anytime,,,false,,generated code
-BMAD Code Audit,bmad-code-generation-agent,Scaffold,SF,Scaffold a new component/module.,scaffold,,anytime,,,false,,scaffolded files
-BMAD Code Audit,bmad-code-impact-analysis-agent,Impact Analysis,IA,Analyze blast radius and risk of code changes.,analyze,,anytime,,,false,{audit_output},impact report
-BMAD Code Audit,bmad-code-impact-analysis-agent,Dependency Trace,DT,Trace dependency chains for a target.,trace,,anytime,,,false,{audit_output},dependency map
-BMAD Code Audit,bmad-code-impact-analysis-agent,Upgrade Risk,UR,Assess risk for upgrades and patches.,upgrade-risk,,anytime,,,false,{audit_output},risk report
+BMAD DEPT Code Agent,_meta,,,,,,,,,false,https://github.com/mayur434/bmad-dept-code-agent,
+BMAD DEPT Code Agent,bmad-code-audit-agent,Code Audit,AU,Run two-tier code audit (TypeScript scanner + AI deep analysis).,audit,,anytime,,,false,{audit_output},audit report|excel report
+BMAD DEPT Code Agent,bmad-code-audit-agent,Scan Only,SC,Run Tier 1 deterministic TypeScript scanner only.,scan,,anytime,,,false,{audit_output},excel report
+BMAD DEPT Code Agent,bmad-code-audit-agent,Deep Audit,DA,Run Tier 2 AI semantic analysis only.,deep-audit,,anytime,bmad-code-audit-agent:scan,,false,{audit_output},markdown report
+BMAD DEPT Code Agent,bmad-code-audit-agent,List Engines,LE,Show available audit engines (commerce/aem/eds).,list-engines,,anytime,,,false,,engine list
+BMAD DEPT Code Agent,bmad-code-scan-agent,Code Scan,CS,Run fast deterministic static analysis scan.,scan,,anytime,,,false,{audit_output},excel report
+BMAD DEPT Code Agent,bmad-code-scan-agent,Quick Scan,QS,Run quick scan mode.,scan-quick,,anytime,,,false,{audit_output},scan report
+BMAD DEPT Code Agent,bmad-code-generation-agent,Generate Code,GC,Generate production-ready code from specifications.,generate,,anytime,,,false,,generated code
+BMAD DEPT Code Agent,bmad-code-generation-agent,Scaffold,SF,Scaffold a new component/module.,scaffold,,anytime,,,false,,scaffolded files
+BMAD DEPT Code Agent,bmad-code-impact-analysis-agent,Impact Analysis,IA,Analyze blast radius and risk of code changes.,analyze,,anytime,,,false,{audit_output},impact report
+BMAD DEPT Code Agent,bmad-code-impact-analysis-agent,Dependency Trace,DT,Trace dependency chains for a target.,trace,,anytime,,,false,{audit_output},dependency map
+BMAD DEPT Code Agent,bmad-code-impact-analysis-agent,Upgrade Risk,UR,Assess risk for upgrades and patches.,upgrade-risk,,anytime,,,false,{audit_output},risk report

@@ -1,9 +1,9 @@
 ---
 name: bmad-code-scan-agent
-description: "Fast deterministic code scanner for enterprise projects. Performs static analysis across multiple platforms and produces structured reports."
+description: "Fast deterministic code scanner (part of BMAD DEPT Code Agent suite). Performs static analysis across multiple Adobe platforms and produces structured reports."
 ---
 
-# BMAD Code Scan Agent
+# BMAD DEPT Code Agent — Scan Skill
 
 ## Purpose
 

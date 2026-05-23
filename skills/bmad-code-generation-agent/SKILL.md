@@ -1,9 +1,9 @@
 ---
 name: bmad-code-generation-agent
-description: "AI-driven code generation agent for AEM projects (AEMaaCS and AEM AMS). Leverages MCP servers for AEMaaCS and LLM skills for AMS to generate production-ready code following Adobe best practices."
+description: "AI-driven code generation agent (part of BMAD DEPT Code Agent suite). Leverages MCP servers for AEMaaCS and LLM skills for AMS to generate production-ready code following Adobe best practices."
 ---
 
-# BMAD Code Generation Agent
+# BMAD DEPT Code Agent — Generation Skill
 
 ## Purpose
 

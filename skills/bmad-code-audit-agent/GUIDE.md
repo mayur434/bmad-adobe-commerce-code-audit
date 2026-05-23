@@ -1,6 +1,6 @@
-# BMAD Code Audit — Custom Module
+# BMAD DEPT Code Agent — Audit Module
 
-Two-tier code audit system for enterprise projects.
+Two-tier code audit system for enterprise Adobe projects.
 
 ---
 
@@ -26,7 +26,7 @@ npx bmad-method install \
 ```
 
 > Replace `~/bmad-modules/adobe-code-audit` with the actual path to this repo.
-> Or use a Git URL: `--custom-source https://github.com/your-org/bmad-code-audit.git`
+> Or use a Git URL: `--custom-source https://github.com/mayur434/bmad-dept-code-agent.git`
 
 After install, the skill lives at `.claude/skills/bmad-code-audit-agent/`.
 
@@ -91,7 +91,7 @@ You can override the output path with `--output /custom/path`.
 If you want to run the scanner standalone without the full BMAD setup:
 
 ```bash
-cd /path/to/bmad-code-audit/skills/bmad-code-audit-agent/scripts
+cd /path/to/bmad-dept-code-agent/skills/bmad-code-audit-agent/scripts
 
 # 1. Install dependencies
 npm install
@@ -264,10 +264,10 @@ Each engine has its own `config.json`. For commerce: `scripts/engines/commerce/c
 ## Directory Structure
 
 ```
-bmad-code-audit/                    # Module repository
+bmad-dept-code-agent/               # Module repository
 ├── package.json                    # npm metadata for BMAD discovery
 ├── src/
-│   ├── module.yaml                 # BMAD module declaration (code: aca)
+│   ├── module.yaml                 # BMAD module declaration (code: dca)
 │   ├── module-help.csv             # Capability registry (13-column format)
 │   └── skills/
 │       └── bmad-code-audit/        # The audit skill

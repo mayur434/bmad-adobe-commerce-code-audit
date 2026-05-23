@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "BMAD Code Audit Report",
+  "title": "BMAD DEPT Code Agent — Audit Report",
   "type": "object",
   "properties": {
     "metadata": {

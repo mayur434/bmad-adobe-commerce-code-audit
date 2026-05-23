@@ -1,16 +1,16 @@
 {
-  "name": "bmad-code-audit",
+  "name": "bmad-dept-code-agent",
   "owner": {
     "name": "mayur434"
   },
   "license": "MIT",
-  "homepage": "https://github.com/mayur434/bmad-adobe-commerce-code-audit",
-  "repository": "https://github.com/mayur434/bmad-adobe-commerce-code-audit",
+  "homepage": "https://github.com/mayur434/bmad-dept-code-agent",
+  "repository": "https://github.com/mayur434/bmad-dept-code-agent",
   "plugins": [
     {
-      "name": "aca",
+      "name": "dca",
       "source": "./skills",
-      "description": "Two-tier code audit for Commerce, AEMaaCS, EDS, and hybrid projects.",
+      "description": "Multi-agent AI suite for Adobe platforms — code audit, generation, impact analysis, and scanning.",
       "version": "2.0.0",
       "skills": [
         "./skills/bmad-code-audit-agent",

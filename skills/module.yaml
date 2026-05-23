@@ -1,8 +1,8 @@
-code: aca
-name: "BMAD Code Audit"
-header: "BMAD Code Audit: Two-tier static analysis + AI-driven deep audit"
-subheader: "Deterministic TypeScript/Node.js scanner (42+ categories) + LLM semantic analysis for Commerce, AEM, EDS"
-description: "Two-tier code audit for Commerce, AEMaaCS, EDS, and hybrid projects"
+code: dca
+name: "BMAD DEPT Code Agent"
+header: "BMAD DEPT Code Agent: Multi-agent AI suite for Adobe platforms"
+subheader: "Code audit, generation, impact analysis, and scanning for Commerce, AEM, EDS"
+description: "Multi-agent AI suite for Commerce, AEMaaCS, EDS, and hybrid projects"
 default_selected: false
 recommendedModules: [bmm]
 requiredModules: [core]
@@ -55,10 +55,10 @@ directories:
   - "{audit_output}"
 
 post-install-notes: |
-  BMAD Code Audit module installed.
+  BMAD DEPT Code Agent installed.
 
   Quick usage:
-    Ask: "audit my project" or "run a code review"
+    Ask: "audit my project" or "scan my project" or "generate a component"
 
   Tier 1 (TypeScript scanner):
     npx ts-node .claude/skills/bmad-code-audit-agent/scripts/run.ts --path . --engine commerce

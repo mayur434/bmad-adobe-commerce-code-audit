@@ -1,4 +1,4 @@
-# BMAD Custom Module — Manual
+# BMAD DEPT Code Agent — Manual
 
 ---
 
@@ -13,7 +13,7 @@ cd /path/to/your-project
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source https://github.com/mayur434/bmad-adobe-commerce-code-audit.git \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git \
   --tools claude-code \
   --yes
 
@@ -21,7 +21,7 @@ npx bmad-method install \
 npx bmad-method install \
   --directory . \
   --modules bmm,bmb \
-  --custom-source /path/to/bmad-code-audit/skills \
+  --custom-source /path/to/bmad-dept-code-agent/skills \
   --tools claude-code \
   --yes
 ```
@@ -40,14 +40,14 @@ cd /path/to/your-project
 npx bmad-method install \
   --directory . \
   --action quick-update \
-  --custom-source https://github.com/mayur434/bmad-adobe-commerce-code-audit.git \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git \
   --yes
 
 # Full update — re-resolves everything, allows config changes
 npx bmad-method install \
   --directory . \
   --action update \
-  --custom-source https://github.com/mayur434/bmad-adobe-commerce-code-audit.git \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git \
   --yes
 ```
 
@@ -81,7 +81,7 @@ npx bmad-method uninstall --directory .
 ## Repository Structure
 
 ```
-bmad-code-audit/
+bmad-dept-code-agent/
 ├── README.md
 ├── MANUAL.md                        ← This file
 └── skills/                          ← --custom-source points here
@@ -175,7 +175,7 @@ full = "scan+skill"
 
 | Item | Convention | Example |
 |------|-----------|---------|
-| Repo | `bmad-<purpose>` | `bmad-code-audit` |
+| Repo | `bmad-<purpose>` | `bmad-dept-code-agent` |
 | Skill folder | `bmad-<purpose>-agent` | `bmad-code-audit-agent` |
 | Module code | 2-4 chars | `aca` |
 | Engine dirs | lowercase, underscores | `eds_commerce` |

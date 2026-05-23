@@ -11,7 +11,7 @@ Code impact analysis for enterprise projects.
 
 ## Installation
 
-Installed as part of the BMAD Code Audit module:
+Installed as part of the BMAD DEPT Code Agent module:
 
 ```bash
 npx bmad-method install \
