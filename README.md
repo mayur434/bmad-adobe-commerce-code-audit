@@ -2,21 +2,110 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-mayur434%2Fbmad--dept--code--agent-blue)](https://github.com/mayur434/bmad-dept-code-agent)
 
-Multi-agent AI suite for **Adobe Commerce**, **AEM as a Cloud Service**, **Edge Delivery Services**, and **EDS+Commerce** projects — code audit, generation, impact analysis, and scanning.
+---
+
+## The BMAD Framework
+
+[BMAD Method](https://github.com/bmadcode/bmad-method) is a modular AI-agent framework that lets you compose specialized skills into any AI coding tool (Claude Code, Cursor, VS Code Copilot, etc.). Modules are installed into your project with a single CLI command and extend your agent with domain-specific knowledge, scripts, and workflows — no custom infrastructure needed.
+
+This repository is a **custom BMAD module** (`dca`) that plugs directly into the framework.
+
+---
+
+## What We Built
+
+A multi-agent AI suite purpose-built for **Adobe platform** projects:
+
+| Agent | Purpose | Status |
+|-------|---------|--------|
+| **Audit** | Two-tier code auditor — deterministic scanner + LLM deep analysis | ✅ Commerce, 🔲 AEM/EDS |
+| **Generation** | Produces production-ready code from natural language prompts | ✅ AEMaaCS (MCP), ✅ AEM AMS, ✅ Commerce |
+| **Impact Analysis** | Evaluates blast radius of changes, upgrades, and patches | 🔲 Planned |
+| **Scan** | Fast static analysis with structured output | 🔲 Planned |
+
+### Audit — Two Tiers
 
 | Tier | Method | Output | Speed |
 |------|--------|--------|-------|
 | **Tier 1** | Deterministic TypeScript/Node.js scanner | Excel report (42+ categories) | Seconds |
-| **Tier 2** | LLM semantic analysis | Markdown/JSON narrative report | Minutes |
+| **Tier 2** | LLM semantic analysis (rule packs + detection strategy) | Markdown/JSON narrative report | Minutes |
+
+**Tier 1** covers security, performance, deprecated APIs, Magento coding standards, DI violations, plugin conflicts, observer issues, database schema integrity, BRD impact mapping, bug cascade analysis, and patch/upgrade breaking changes.
+
+**Tier 2** catches what scripts cannot — architectural anti-patterns, cross-file data flow issues, business logic bugs, contextual N+1 queries, and config consistency problems.
+
+### Generation
+
+- **AEMaaCS** — Full MCP integration (remote Adobe Cloud + local SDK). Zero-config auto-provisioning.
+- **AEM AMS** — LLM skills-based generation, Maven + CI/CD deploy pipelines.
+- **Adobe Commerce** — Module scaffolding, plugins, observers, GraphQL, admin UI, cron, message queues, and more.
+
+### Module Architecture
+
+```mermaid
+graph TB
+    subgraph BMAD["BMAD Framework"]
+        CLI["npx bmad-method install"]
+        Core["Core Module (bmm)"]
+    end
+
+    subgraph DCA["Custom Module: bmad-dept-code-agent (dca)"]
+        direction TB
+        Manifest["module.yaml + marketplace.json"]
+
+        subgraph Agents["Agent Skills"]
+            direction LR
+            Audit["Audit Agent"]
+            Gen["Generation Agent"]
+            Impact["Impact Analysis Agent"]
+            Scan["Scan Agent"]
+        end
+
+        subgraph AuditInternals["Audit Engine (TypeScript)"]
+            direction TB
+            Scanner["Tier 1: Static Scanner"]
+            LLM["Tier 2: LLM Analysis"]
+            Scanner -->|feeds findings| LLM
+        end
+
+        subgraph GenInternals["Generation Engine"]
+            direction TB
+            MCP["MCP Servers (AEMaaCS)"]
+            Skills["LLM Skills (AMS / Commerce)"]
+        end
+    end
+
+    subgraph Target["Your Project"]
+        Claude[".claude/skills/"]
+        Report["Audit Reports (Excel / Markdown)"]
+        Code["Generated Code"]
+    end
+
+    CLI -->|installs| DCA
+    Core -->|required by| DCA
+    Manifest -->|registers| Agents
+    Audit --> AuditInternals
+    Gen --> GenInternals
+    DCA -->|deployed into| Claude
+    Scanner --> Report
+    LLM --> Report
+    MCP --> Code
+    Skills --> Code
+```
 
 ---
 
-## Quick Start
+## Install
 
-### From a Git URL
+### Prerequisites
+
+- **Node.js** v20.12+
+- A target project where you want the agents installed
+
+### Fresh Install (from Git)
 
 ```bash
-cd /path/to/your/project
+cd /path/to/your-project
 
 npx bmad-method install \
   --directory . \
@@ -26,7 +115,7 @@ npx bmad-method install \
   --yes
 ```
 
-### From a Local Path
+### Fresh Install (from local clone)
 
 ```bash
 npx bmad-method install \
@@ -37,84 +126,63 @@ npx bmad-method install \
   --yes
 ```
 
-After install, ask your agent: **"audit my project"**
+After install, dependencies are auto-installed on first use. To pre-install manually:
 
-The agent will:
-1. Auto-install Node dependencies if missing
-2. Ask which mode you prefer (Scanner / LLM / Full Audit)
-3. Run the audit and produce the report
-
----
-
-## What It Does
-
-### Tier 1 — TypeScript/Node.js Static Scanner
-
-Fast, deterministic scan that produces an enterprise Excel report:
-
-- **42+ code audit categories** — security, performance, deprecated APIs, Magento coding standards, DI violations, plugin conflicts, observer issues, etc.
-- **Database dump analysis** — schema integrity, missing indexes, orphaned tables, constraint violations
-- **BRD impact analysis** — maps new requirements to affected modules, estimates effort
-- **Bug cascade analysis** — severity scoring, dependency chains, regression risk
-- **Patch/upgrade analysis** — breaking changes, removed APIs, compatibility flags
-
-### Tier 2 — LLM Deep Analysis
-
-AI-driven analysis that catches what scripts cannot:
-
-- Architectural anti-patterns and design violations
-- Cross-file data flow issues (unsanitized input propagation)
-- Business logic correctness problems
-- Contextual performance issues (N+1 across multiple endpoints)
-- Configuration consistency (code expects config that doesn't exist)
-
-Uses platform-specific [rule packs](skills/bmad-dept-code-audit-agent/resources/rule-packs/) and a multi-pass [detection strategy](skills/bmad-dept-code-audit-agent/resources/shared/detection-strategy.md).
-
----
-
-## Folder Structure
-
-```
-bmad-dept-code-agent/
-└── skills/
-    └── bmad-dept-code-audit-agent/
-        ├── SKILL.md              # AI agent instructions
-        ├── GUIDE.md              # Human usage guide
-        ├── customize.toml        # Skill metadata & commands
-        ├── assets/
-        │   ├── module.yaml       # BMAD module manifest
-        │   └── module-help.csv   # Capability registry
-        ├── resources/
-        │   ├── shared/
-        │   │   ├── severity-model.md
-        │   │   ├── confidence-scoring.md
-        │   │   ├── impact-analysis.md
-        │   │   └── detection-strategy.md
-        │   └── rule-packs/
-        │       ├── aemcs/rules.md
-        │       ├── commerce/rules.md
-        │       ├── eds/rules.md
-        │       └── eds-commerce/rules.md
-        ├── templates/
-        │   ├── report-markdown.md
-        │   └── report-json.md
-        └── scripts/
-            ├── run.ts            # Multi-engine dispatcher
-            ├── package.json      # Node dependencies
-            ├── tsconfig.json
-            ├── engines/
-            │   ├── registry.ts   # Engine auto-detection
-            │   ├── commerce/     # Full Commerce engine
-            │   ├── aem/          # Planned
-            │   ├── eds/          # Planned
-            │   └── eds_commerce/ # Planned
-            └── shared/
-                └── base.ts       # Base engine class
+```bash
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
 ```
 
 ---
 
-## Available Engines
+## Update
+
+```bash
+cd /path/to/your-project
+
+# Quick update — preserves settings, syncs module files only
+npx bmad-method install \
+  --directory . \
+  --action quick-update \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git \
+  --yes
+
+# Full update — re-resolves everything, allows config changes
+npx bmad-method install \
+  --directory . \
+  --action update \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git \
+  --yes
+```
+
+Then reinstall deps:
+
+```bash
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
+```
+
+### Uninstall
+
+```bash
+npx bmad-method uninstall --directory .
+```
+
+### Useful Flags
+
+| Flag | Purpose |
+|------|---------|
+| `--action quick-update` | Fast sync — preserves all config |
+| `--action update` | Full update — can modify modules/config |
+| `--custom-source <url\|path>` | Git URL or local `skills/` folder path |
+| `--yes` | Non-interactive, accept defaults |
+| `--channel next` | Use latest HEAD instead of stable tag |
+| `--pin CODE=TAG` | Pin module to specific release tag |
+| `--set module.key=value` | Override config non-interactively |
+
+---
+
+## Configuration
+
+### Supported Engines
 
 | Engine | Platform | Status |
 |--------|----------|--------|
@@ -123,47 +191,12 @@ bmad-dept-code-agent/
 | `eds` | Edge Delivery Services | 🔲 Planned |
 | `eds-commerce` | EDS + Commerce Hybrid | 🔲 Planned |
 
----
+### Standalone Scanner (without BMAD)
 
-## Usage Modes
-
-### Mode 1: Scanner Only (Tier 1)
-
-Fast deterministic scan → Excel report in seconds.
+Run the TypeScript scanner directly:
 
 ```bash
-# After BMAD install (from project root)
-npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce --name "My Project"
-
-# With database dump + BRD
-npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce \
-  --db /path/to/dump.sql \
-  --brd /path/to/requirements.docx \
-  --name "Client Project"
-```
-
-### Mode 2: LLM Analysis Only (Tier 2)
-
-AI agent reads rule packs + detection strategy, performs multi-pass semantic analysis.
-
-Ask: **"deep audit my project using LLM analysis"**
-
-### Mode 3: Full Audit (Tier 1 + Tier 2)
-
-Scanner runs first → LLM analyzes high-severity findings deeper → combined report.
-
-Ask: **"full audit my project"**
-
----
-
-## Standalone Usage (Without BMAD)
-
-Run the TypeScript scanner directly without any BMAD setup:
-
-```bash
-cd skills/bmad-dept-code-audit-agent/scripts
-
-npm install
+cd skills/bmad-dept-code-audit-agent/scripts && npm install
 
 # Auto-detect platform
 npx ts-node run.ts --path /path/to/your/project --name "Project Name"
@@ -175,52 +208,98 @@ npx ts-node run.ts --engine commerce --path /path/to/project
 npx ts-node run.ts --list-engines
 ```
 
----
-
-## Architecture
+### Architecture
 
 ```
-Tier 1 (TypeScript/Node.js)      Tier 2 (LLM Skill)
-┌──────────────────────┐        ┌──────────────────────────┐
-│  Deterministic       │        │  Semantic Analysis       │
-│  Static Analysis     │        │  (Rule Packs + AI)       │
-│                      │        │                          │
-│  • 42+ categories    │───────▶│  • Architectural flaws   │
-│  • Regex scan        │ feeds  │  • Cross-file data flow  │
-│  • Excel report      │ into   │  • Business logic bugs   │
-│  • Seconds to run    │        │  • Contextual issues     │
-└──────────────────────┘        └──────────────────────────┘
+Tier 1 (TypeScript/Node.js)        Tier 2 (LLM Skill)
+┌────────────────────────┐        ┌──────────────────────────┐
+│  Deterministic         │        │  Semantic Analysis       │
+│  Static Analysis       │        │  (Rule Packs + AI)       │
+│                        │        │                          │
+│  • 42+ categories      │───────▶│  • Architectural flaws   │
+│  • Regex + AST scan    │ feeds  │  • Cross-file data flow  │
+│  • Excel report        │ into   │  • Business logic bugs   │
+│  • Seconds to run      │        │  • Contextual issues     │
+└────────────────────────┘        └──────────────────────────┘
 ```
 
 ---
 
-## Prerequisites
+## Getting Started
 
-- **Node.js** v20.12+ (for BMAD installer and Tier 1 scanner)
-- Node packages: `exceljs`, `mammoth`, `fast-glob` (auto-installed via `npm install`)
+See **[MANUAL.md](MANUAL.md)** for full operational details:
+
+- Repository structure and key files
+- How to create a new skill module from scratch
+- Naming conventions and file contracts
+- The SKILL.md / GUIDE.md / customize.toml relationship
+- Pre-flight checklist before publishing
 
 ---
 
-## Reference Files
+## Prompts
 
-| File | Purpose |
-|------|---------|
-| [MANUAL.md](MANUAL.md) | **Team guide** — how to create a new BMAD DEPT module from scratch |
-| [SKILL.md](skills/bmad-dept-code-audit-agent/SKILL.md) | AI agent instructions — workflow, activation triggers, modes |
-| [GUIDE.md](skills/bmad-dept-code-audit-agent/GUIDE.md) | Human-readable setup and usage guide |
-| [customize.toml](skills/bmad-dept-code-audit-agent/customize.toml) | Skill metadata, commands, activation keywords |
-| [module.yaml](skills/bmad-dept-code-audit-agent/assets/module.yaml) | BMAD module manifest (code, agents, config vars) |
-| [module-help.csv](skills/bmad-dept-code-audit-agent/assets/module-help.csv) | Capability registry (13-column format) |
-| [detection-strategy.md](skills/bmad-dept-code-audit-agent/resources/shared/detection-strategy.md) | Multi-pass analysis strategy for Tier 2 |
-| [severity-model.md](skills/bmad-dept-code-audit-agent/resources/shared/severity-model.md) | Severity scoring framework |
-| [confidence-scoring.md](skills/bmad-dept-code-audit-agent/resources/shared/confidence-scoring.md) | Confidence calculation model |
-| [impact-analysis.md](skills/bmad-dept-code-audit-agent/resources/shared/impact-analysis.md) | Impact assessment framework |
-| [commerce/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/commerce/rules.md) | Commerce platform rule pack |
-| [aemcs/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/aemcs/rules.md) | AEM Cloud Service rule pack |
-| [eds/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/eds/rules.md) | Edge Delivery Services rule pack |
-| [eds-commerce/rules.md](skills/bmad-dept-code-audit-agent/resources/rule-packs/eds-commerce/rules.md) | EDS+Commerce hybrid rule pack |
-| [report-markdown.md](skills/bmad-dept-code-audit-agent/templates/report-markdown.md) | Markdown report template |
-| [report-json.md](skills/bmad-dept-code-audit-agent/templates/report-json.md) | JSON report template |
+See **[PROMPTS.md](PROMPTS.md)** for the complete prompt reference organized by agent and platform.
+
+Quick examples to get going:
+
+```text
+# Audit (Commerce)
+audit my project
+scan my project and name it "Client Name"
+scan my project with DB dump at /path/to/dump.sql
+deep audit my project
+full audit my project
+
+# Generation (AEMaaCS)
+create a new AEM component called Hero Banner
+generate a Sling Model for the Article component
+create Cloud Manager pipeline configuration
+
+# Generation (Commerce)
+create a new Commerce module Acme_CustomShipping
+create an after plugin on Magento\Catalog\Model\Product::getName
+add a GraphQL resolver for querying custom entity by ID
+```
+
+After an audit completes, follow up with:
+
+```text
+summarize the audit findings
+show me all CRITICAL severity items
+create a fix plan for the critical items
+estimate effort to fix all HIGH and CRITICAL findings
+```
+
+---
+
+## Folder Structure
+
+```
+bmad-dept-code-agent/
+├── README.md                         ← You are here
+├── MANUAL.md                         ← Operational guide
+├── PROMPTS.md                        ← Full prompt reference
+└── skills/
+    ├── module.yaml                   ← BMAD module manifest
+    ├── module-help.csv               ← Menu/capability registry
+    ├── bmad-dept-code-audit-agent/
+    ├── bmad-dept-code-generation-agent/
+    ├── bmad-dept-code-impact-analysis-agent/
+    └── bmad-dept-code-scan-agent/
+```
+
+Each skill folder contains:
+
+| File | Role |
+|------|------|
+| `SKILL.md` | Instructions TO the AI agent — workflows, modes, triggers |
+| `GUIDE.md` | Instructions FOR humans — setup, examples |
+| `customize.toml` | Activation keywords, named commands, script paths |
+| `assets/` | Module manifest + capability registry |
+| `resources/` | Rule packs, scoring models, detection strategies |
+| `templates/` | Report output templates |
+| `scripts/` | TypeScript/Python engines |
 
 ---
 
