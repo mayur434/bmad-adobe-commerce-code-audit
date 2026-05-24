@@ -1,0 +1,35 @@
+{
+  "project": {
+    "path": "",
+    "name": ""
+  },
+  "output": {
+    "directory": "output"
+  },
+  "scanner": {
+    "platform": "both",
+    "categories": [
+      "Performance",
+      "Code Quality",
+      "Security",
+      "SEO",
+      "Accessibility",
+      "Architecture",
+      "Sling & OSGi",
+      "Cloud Readiness",
+      "Dispatcher",
+      "HTL & Frontend",
+      "Test Coverage",
+      "Maintainability"
+    ],
+    "modules": []
+  },
+  "thresholds": {
+    "god_class_lines": 500,
+    "large_file_lines": 300,
+    "max_methods_per_class": 20,
+    "max_constructor_deps": 8,
+    "max_catch_blocks": 5,
+    "max_nested_depth": 4
+  }
+}

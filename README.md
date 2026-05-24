@@ -282,6 +282,37 @@ npx bmad-method uninstall --directory .
 | `--pin CODE=TAG` | Pin module to specific release tag |
 | `--set module.key=value` | Override config non-interactively |
 
+### Using a Specific Feature Branch
+
+To install or update from a specific branch (e.g., a feature branch with new audit rules), append `#branch-name` to the Git URL:
+
+```bash
+# Install from a feature branch
+npx bmad-method install \
+  --directory . \
+  --action quick-update \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git#feature/frontend-audit \
+  --yes
+```
+
+**Alternative: clone locally and point to the branch**
+
+```bash
+git clone -b feature/frontend-audit https://github.com/mayur434/bmad-dept-code-agent.git /tmp/bmad-branch
+npx bmad-method install \
+  --directory . \
+  --action quick-update \
+  --custom-source /tmp/bmad-branch/skills \
+  --yes
+```
+
+| Scenario | Approach |
+|----------|----------|
+| Specific feature branch | `--custom-source <url>.git#branch-name` |
+| Latest HEAD (default branch) | `--channel next` |
+| Specific release tag | `--pin bmad-dept-code-audit-agent=v1.2.3` |
+| Local development copy | `--custom-source /local/path/skills` |
+
 ---
 
 ## Configuration

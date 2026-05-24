@@ -1679,3 +1679,381 @@ public class DataSyncTask implements Runnable {
 
 #### Related Rules
 - `AEMCS-PERF-001` (async processing — schedulers are a form of async)
+
+---
+
+## Frontend Framework Rules (ui.frontend SPA)
+
+---
+
+### AEMCS-FE-001: Frontend Framework Detection & Audit Scope
+
+- **Severity**: Info
+- **Description**: When `ui.frontend` contains React, Angular, or Vue (detected from `package.json` dependencies), the audit engine activates framework-specific rules covering component patterns, state management, bundle optimization, accessibility, and security. All findings are tagged with `ui.frontend` module.
+
+#### Detect — Files to Scan
+```
+ui.frontend/package.json
+```
+
+#### Detect — Frameworks
+- `react` / `react-dom` → React rules activated
+- `@angular/core` → Angular rules activated
+- `vue` → Vue rules activated
+- None of the above → Generic vanilla JS/TS rules only
+
+---
+
+### AEMCS-FE-002: Heavy Library Dependency
+
+- **Severity**: Medium
+- **Description**: Large libraries (moment.js, lodash full, jQuery, underscore) in `ui.frontend` dependencies bloat the final bundle compiled into AEM client libraries. On AEMaaCS with CDN, large bundles still hurt initial page load and Core Web Vitals (LCP/FID).
+
+#### Detect — Files to Scan
+```
+ui.frontend/package.json
+```
+
+#### Detect — Bad Pattern
+- `moment` in dependencies (330KB+)
+- `lodash` (not `lodash-es`) in dependencies (70KB+)
+- `jquery` in a React/Angular/Vue project
+- `underscore` when native ES6+ methods suffice
+
+#### Detect — Good Pattern
+- `date-fns` or `dayjs` instead of `moment`
+- `lodash-es` or individual imports (`lodash/debounce`)
+- No jQuery in SPA projects
+
+#### Bad Example
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "moment": "^2.29.4",
+    "lodash": "^4.17.21",
+    "jquery": "^3.7.0"
+  }
+}
+```
+
+#### Good Example
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "date-fns": "^3.0.0",
+    "lodash-es": "^4.17.21"
+  }
+}
+```
+
+---
+
+### AEMCS-FE-003: Missing Frontend Test Framework
+
+- **Severity**: High
+- **Description**: AEM `ui.frontend` projects with SPA frameworks must have unit and component testing. Frontend code without tests has high regression risk, especially when bundled output is deployed as AEM clientlibs via Cloud Manager pipelines.
+
+#### Detect — Files to Scan
+```
+ui.frontend/package.json
+```
+
+#### Detect — Bad Pattern
+- No `jest`, `vitest`, `karma`, `@testing-library/*`, `@vue/test-utils` in dependencies
+- No test script in `package.json`
+
+#### Detect — Good Pattern
+- Jest or Vitest with testing-library installed
+- Test script configured: `"test": "jest --coverage"`
+- Coverage threshold configured
+
+---
+
+### AEMCS-FE-004: React — Missing Key in List Rendering
+
+- **Severity**: High
+- **Description**: React list rendering (`.map()`) without `key` prop causes reconciliation errors. React cannot efficiently track list items, leading to incorrect DOM updates and component state leakage.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{tsx,jsx}
+```
+
+#### Detect — Bad Pattern
+```regex
+\.map\s*\(\s*\(?[^)]*\)?\s*=>\s*[(<](?![\s\S]{0,200}key=)
+```
+
+#### Bad Example
+```tsx
+{items.map(item => (
+  <li>{item.name}</li>  {/* Missing key prop */}
+))}
+```
+
+#### Good Example
+```tsx
+{items.map(item => (
+  <li key={item.id}>{item.name}</li>
+))}
+```
+
+---
+
+### AEMCS-FE-005: React — useEffect Without Dependency Array
+
+- **Severity**: High
+- **Description**: `useEffect` without a dependency array runs on every render, causing performance issues and potential infinite loops (especially with state updates inside the effect).
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{tsx,jsx,ts,js}
+```
+
+#### Detect — Bad Pattern
+```regex
+useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[\s\S]*?\}\s*\)\s*;
+```
+(useEffect call with no second argument — no `[]` before closing paren)
+
+#### Bad Example
+```tsx
+useEffect(() => {
+  fetchData();  // Runs on EVERY render — infinite loop if fetchData sets state
+});
+```
+
+#### Good Example
+```tsx
+useEffect(() => {
+  fetchData();
+}, []); // Runs once on mount
+
+useEffect(() => {
+  fetchData(userId);
+}, [userId]); // Runs when userId changes
+```
+
+---
+
+### AEMCS-FE-006: React — dangerouslySetInnerHTML Without Sanitization
+
+- **Severity**: Critical
+- **Description**: Using `dangerouslySetInnerHTML` without sanitization (DOMPurify) is a Cross-Site Scripting (XSS) vulnerability. User-controlled content rendered as raw HTML can execute malicious scripts.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{tsx,jsx}
+```
+
+#### Detect — Bad Pattern
+```regex
+dangerouslySetInnerHTML\s*=\s*\{(?![\s\S]{0,100}(sanitize|DOMPurify|purify))
+```
+
+#### Bad Example
+```tsx
+<div dangerouslySetInnerHTML={{ __html: userComment }} />
+```
+
+#### Good Example
+```tsx
+import DOMPurify from 'dompurify';
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userComment) }} />
+```
+
+---
+
+### AEMCS-FE-007: Angular — Observable Without Unsubscribe
+
+- **Severity**: High
+- **Description**: Angular observables that are `.subscribe()`d without cleanup (`takeUntil`, `unsubscribe` in `ngOnDestroy`, or `async` pipe) leak memory. Each subscription lives beyond component destruction.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.ts
+```
+
+#### Detect — Bad Pattern
+- `.subscribe()` without `takeUntil(destroy$)` pattern
+- Component with subscriptions but no `OnDestroy` implementation
+- No `unsubscribe` in component lifecycle
+
+#### Bad Example
+```typescript
+@Component({ ... })
+export class UserComponent {
+  ngOnInit() {
+    this.http.get('/api/users').subscribe(users => this.users = users);
+    // Never unsubscribed — leaks on every component creation/destruction
+  }
+}
+```
+
+#### Good Example
+```typescript
+@Component({ ... })
+export class UserComponent implements OnDestroy {
+  private destroy$ = new Subject<void>();
+
+  ngOnInit() {
+    this.http.get('/api/users')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(users => this.users = users);
+  }
+
+  ngOnDestroy() { this.destroy$.next(); this.destroy$.complete(); }
+}
+```
+
+---
+
+### AEMCS-FE-008: Angular — *ngFor Without trackBy
+
+- **Severity**: High
+- **Description**: `*ngFor` without `trackBy` causes Angular to destroy and recreate the entire DOM list on every change detection cycle. With large lists this causes visible flicker and poor performance.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.html
+```
+
+#### Detect — Bad Pattern
+```regex
+\*ngFor\s*=\s*"[^"]*"(?![\s\S]{0,50}trackBy)
+```
+
+#### Bad Example
+```html
+<li *ngFor="let item of items">{{ item.name }}</li>
+```
+
+#### Good Example
+```html
+<li *ngFor="let item of items; trackBy: trackById">{{ item.name }}</li>
+```
+
+---
+
+### AEMCS-FE-009: Vue — v-for Without :key
+
+- **Severity**: High
+- **Description**: Vue's `v-for` directive without `:key` binding prevents Vue's virtual DOM from efficiently tracking list changes. Without `:key`, Vue uses a "patch in place" strategy that fails with stateful child components.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.vue
+```
+
+#### Detect — Bad Pattern
+```regex
+v-for\s*=\s*"[^"]*"(?![\s\S]{0,50}:key|v-bind:key)
+```
+
+#### Bad Example
+```html
+<div v-for="item in items">{{ item.name }}</div>
+```
+
+#### Good Example
+```html
+<div v-for="item in items" :key="item.id">{{ item.name }}</div>
+```
+
+---
+
+### AEMCS-FE-010: Vue — v-html Without Sanitization (XSS)
+
+- **Severity**: Critical
+- **Description**: `v-html` renders raw HTML directly into the DOM. If the value contains user-controlled data, attackers can inject malicious scripts. Equivalent to `innerHTML` assignment.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.vue
+```
+
+#### Detect — Bad Pattern
+```regex
+v-html\s*=\s*"(?!.*sanitize|.*DOMPurify)
+```
+
+#### Bad Example
+```html
+<div v-html="userComment"></div>
+```
+
+#### Good Example
+```html
+<div v-html="sanitizedComment"></div>
+<!-- In setup: sanitizedComment = DOMPurify.sanitize(raw) -->
+```
+
+---
+
+### AEMCS-FE-011: Direct DOM Manipulation in SPA Framework
+
+- **Severity**: Medium
+- **Description**: Using `document.getElementById`, `document.querySelector`, or `.innerHTML=` inside React/Angular/Vue components bypasses the framework's virtual DOM / change detection. This causes rendering inconsistencies and memory leaks.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{ts,tsx,js,jsx,vue}
+```
+
+#### Detect — Bad Pattern
+```regex
+document\.(getElementById|querySelector|getElementsBy|createElement)|\.innerHTML\s*=
+```
+
+#### Detect — Good Pattern
+- React: `useRef()` for DOM access
+- Angular: `@ViewChild` or `Renderer2`
+- Vue: `ref="myElement"` template refs
+
+---
+
+### AEMCS-FE-012: Hardcoded Environment URLs in Frontend
+
+- **Severity**: High
+- **Description**: Hardcoded URLs with environment identifiers (localhost, dev, stage, prod) in frontend source code break across AEM environments. On AEMaaCS, Cloud Manager promotes the same artifact across dev→stage→prod, so hardcoded URLs will be wrong in higher environments.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{ts,tsx,js,jsx,vue}
+```
+
+#### Detect — Bad Pattern
+```regex
+(https?:\/\/|\/\/)(localhost|127\.0\.0\.1|[a-z]+\.(dev|stage|prod|internal)\.)
+```
+
+#### Detect — Good Pattern
+- `process.env.REACT_APP_API_URL` (React)
+- `environment.apiUrl` (Angular)
+- `import.meta.env.VITE_API_URL` (Vite/Vue)
+- Runtime config read from AEM page properties or data attributes
+
+---
+
+### AEMCS-FE-013: Secrets in Frontend Code
+
+- **Severity**: Critical
+- **Description**: API keys, tokens, passwords, or secrets in frontend source code are exposed to all users via browser DevTools. All client-side code is public; secrets must be kept on the server side.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{ts,tsx,js,jsx,vue}
+!ui.frontend/src/**/*.{spec,test}.*
+```
+
+#### Detect — Bad Pattern
+```regex
+(api[_-]?key|secret|token|password|auth)\s*[:=]\s*['"][^'"]{8,}['"]
+```
+
+#### Detect — Good Pattern
+- Proxy API calls through AEM servlet/backend
+- Use `.env` files (not committed) with build-time replacement
+- Server-side environment variables only

@@ -76,6 +76,37 @@ npx bmad-method uninstall --directory .
 | `--list-options [module]` | Show available `--set` keys |
 | `--list-tools` | Show valid tool/IDE IDs |
 
+### Using a Specific Feature Branch
+
+Append `#branch-name` to the Git URL in `--custom-source`:
+
+```bash
+# From a feature branch
+npx bmad-method install \
+  --directory . \
+  --action quick-update \
+  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git#feature/frontend-audit \
+  --yes
+```
+
+Or clone locally and point to the skills/ folder:
+
+```bash
+git clone -b feature/frontend-audit https://github.com/mayur434/bmad-dept-code-agent.git /tmp/bmad-branch
+npx bmad-method install \
+  --directory . \
+  --action quick-update \
+  --custom-source /tmp/bmad-branch/skills \
+  --yes
+```
+
+| Scenario | Approach |
+|----------|----------|
+| Feature branch | `--custom-source <url>.git#branch-name` |
+| Latest HEAD | `--channel next` |
+| Pinned release | `--pin bmad-dept-code-audit-agent=v1.2.3` |
+| Local dev copy | `--custom-source /local/path/skills` |
+
 ---
 
 ## Repository Structure
