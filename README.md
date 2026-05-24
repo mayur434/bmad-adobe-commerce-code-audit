@@ -284,31 +284,51 @@ npx bmad-method uninstall --directory .
 
 ### Using a Specific Feature Branch
 
-To install or update from a specific branch (e.g., a feature branch with new audit rules), append `#branch-name` to the Git URL:
+> **Important:** `bmad-method` v6.x does NOT support `#branch` fragments in `--custom-source` Git URLs.
+> The `--channel next` flag only resolves to `main` HEAD, and `--pin` only supports release tags.
+> Use the **helper scripts** below for reliable branch-based installation.
 
+#### Recommended: Use the branch installer scripts
+
+**Bash (Git Bash / macOS / Linux):**
 ```bash
-# Install from a feature branch
-npx bmad-method install \
-  --directory . \
-  --action quick-update \
-  --custom-source https://github.com/mayur434/bmad-dept-code-agent.git#feature/frontend-audit \
-  --yes
+# From the target project directory
+bash <(curl -s https://raw.githubusercontent.com/mayur434/bmad-dept-coding-agents/main/install-from-branch.sh) \
+  feature/aemcs-changes \
+  . \
+  bmm,bmb
 ```
 
-**Alternative: clone locally and point to the branch**
+Or clone this repo and run locally:
+```bash
+./install-from-branch.sh feature/aemcs-changes "/d/WIPRO NEW/Code/DTIN-WIPRO-Website-AEM"
+```
+
+**PowerShell (Windows):**
+```powershell
+.\install-from-branch.ps1 -Branch "feature/aemcs-changes" -TargetDir "D:\WIPRO NEW\Code\DTIN-WIPRO-Website-AEM"
+```
+
+#### Manual approach (clone + local path)
 
 ```bash
-git clone -b feature/frontend-audit https://github.com/mayur434/bmad-dept-code-agent.git /tmp/bmad-branch
-npx bmad-method install \
-  --directory . \
-  --action quick-update \
-  --custom-source /tmp/bmad-branch/skills \
-  --yes
+# 1. Clone the specific branch
+git clone --depth 1 -b feature/aemcs-changes https://github.com/mayur434/bmad-dept-coding-agents.git /tmp/bmad-branch
+
+# 2. Install from local clone (points to skills/ folder)
+cd /path/to/your-project
+npx bmad-method install --directory . --modules bmm,bmb --custom-source /tmp/bmad-branch/skills --tools claude-code --yes
+
+# 3. Install scanner dependencies
+cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
+
+# 4. Cleanup
+rm -rf /tmp/bmad-branch
 ```
 
 | Scenario | Approach |
 |----------|----------|
-| Specific feature branch | `--custom-source <url>.git#branch-name` |
+| Specific feature branch | `./install-from-branch.sh <branch> <target>` |
 | Latest HEAD (default branch) | `--channel next` |
 | Specific release tag | `--pin bmad-dept-code-audit-agent=v1.2.3` |
 | Local development copy | `--custom-source /local/path/skills` |
