@@ -76,37 +76,6 @@ npx bmad-method uninstall --directory .
 | `--list-options [module]` | Show available `--set` keys |
 | `--list-tools` | Show valid tool/IDE IDs |
 
-### Using a Specific Feature Branch
-
-> **Note:** `bmad-method` v6.x does NOT support `#branch` fragments in `--custom-source` URLs.
-> Use the helper scripts or the manual clone approach below.
-
-**Bash (Git Bash / macOS / Linux):**
-```bash
-./install-from-branch.sh feature/aemcs-changes "/path/to/target-project"
-```
-
-**PowerShell (Windows):**
-```powershell
-.\install-from-branch.ps1 -Branch "feature/aemcs-changes" -TargetDir "D:\Path\To\Project"
-```
-
-**Manual approach:**
-```bash
-git clone --depth 1 -b feature/aemcs-changes https://github.com/mayur434/bmad-dept-coding-agents.git /tmp/bmad-branch
-cd /path/to/target-project
-npx bmad-method install --directory . --modules bmm,bmb --custom-source /tmp/bmad-branch/skills --tools claude-code --yes
-cd .claude/skills/bmad-dept-code-audit-agent/scripts && npm install
-rm -rf /tmp/bmad-branch
-```
-
-| Scenario | Approach |
-|----------|----------|
-| Feature branch | `./install-from-branch.sh <branch> <target>` |
-| Latest HEAD | `--channel next` |
-| Pinned release | `--pin bmad-dept-code-audit-agent=v1.2.3` |
-| Local dev copy | `--custom-source /local/path/skills` |
-
 ---
 
 ## Repository Structure
