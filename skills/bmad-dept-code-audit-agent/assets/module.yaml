@@ -40,7 +40,7 @@ post-install-notes: |
     Ask: "audit my project" or "scan my project" or "generate a component"
 
   Tier 1 (TypeScript scanner):
-    npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce
+    npx ts-node .claude/skills/bmad-dept-code-audit-agent/scripts/run.ts --path . --engine commerce --skip-preflight
 
   Tier 2 (AI deep analysis):
     Triggered automatically when you ask the agent to audit.
