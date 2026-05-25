@@ -134,17 +134,21 @@ bmad-dept-code-*-agent/
 ├── resources/                 ← Knowledge base (rule packs, strategies)
 ├── templates/                 ← Output templates (JSON, Markdown)
 └── scripts/
-    ├── run.ts                 ← CLI dispatcher (entry point)
+    ├── run.ts                 ← CLI dispatcher (entry point + preflight)
     ├── package.json           ← Node.js dependencies
     ├── tsconfig.json          ← TypeScript config
     ├── shared/
-    │   └── base.ts            ← Abstract base class / shared interfaces
+    │   ├── base.ts            ← Abstract base class / shared interfaces
+    │   ├── styles.ts          ← Excel styling (fonts, fills, borders, helpers)
+    │   ├── report-excel.ts    ← Generic Excel report generator (6 sheets)
+    │   ├── report-markdown.ts ← Generic Markdown report generator
+    │   └── preflight.ts       ← Model detection + project sizing + mode viability
     └── engines/
         ├── registry.ts        ← Platform auto-detection + engine resolution
-        ├── commerce/          ← Adobe Commerce engine (✅ in Audit)
-        ├── aem/               ← AEMaaCS engine (🔲 placeholder)
-        ├── eds/               ← EDS engine (🔲 placeholder)
-        └── eds_commerce/      ← EDS+Commerce hybrid (🔲 placeholder)
+        ├── commerce/          ← Adobe Commerce engine (✅ full implementation)
+        ├── aem/               ← AEMaaCS engine (✅ report generation)
+        ├── eds/               ← EDS engine (✅ report generation)
+        └── eds_commerce/      ← EDS+Commerce hybrid (✅ report generation)
 ```
 
 #### File Roles Explained
@@ -158,9 +162,14 @@ bmad-dept-code-*-agent/
 | `assets/module-help.csv` | BMAD Help | Capabilities listing for `bmad-help` queries |
 | `resources/` | AI Agent (Tier 2) | Rule packs, detection strategies, scoring models |
 | `templates/` | Tier 1 Engine | Output format skeletons (JSON, Markdown) |
-| `scripts/run.ts` | CLI / Agent | Entry point — arg parsing, engine dispatch |
+| `scripts/run.ts` | CLI / Agent | Entry point — preflight → arg parsing → engine dispatch |
 | `scripts/shared/base.ts` | Engine devs | Abstract class that all platform engines extend |
+| `scripts/shared/preflight.ts` | Dispatcher | Auto-detects model, estimates project size, recommends mode |
+| `scripts/shared/report-excel.ts` | All engines | Platform-agnostic Excel report (6 sheets via `PlatformReportConfig`) |
+| `scripts/shared/report-markdown.ts` | All engines | Platform-agnostic Markdown report generation |
+| `scripts/shared/styles.ts` | Report generators | Shared Excel styles, severity colors, formatting helpers |
 | `scripts/engines/registry.ts` | Dispatcher | Maps platform IDs → detection logic → engine modules |
+| `scripts/engines/*/config.ts` | Report generator | Platform-specific domains, rollout waves, recommendations |
 
 #### Commerce Engine (Reference Implementation)
 
@@ -193,9 +202,24 @@ scripts/engines/commerce/
 #### Adding a New Platform Engine
 
 1. Create `scripts/engines/<platform>/`
-2. Extend the abstract base class from `shared/base.ts`
-3. Register in `engines/registry.ts` with a `detect()` function
-4. The dispatcher (`run.ts`) handles the rest — CLI parsing, engine resolution, output routing
+2. Add `config.ts` — implement `PlatformReportConfig` (domain classifier, rollout waves, recommendations)
+3. Add `audit.ts` — extend `BaseAuditEngine` from `shared/base.ts`, implement `scan()` and `generateReport()`
+4. Register in `engines/registry.ts` with a `detect()` function
+5. The dispatcher (`run.ts`) handles the rest — preflight, CLI parsing, engine resolution, output routing
+
+Report generation is automatic: pass your `FindingsMap` to `AuditExcelReport` + `AuditMarkdownReport` with your platform config — both `.xlsx` and `.md` are produced.
+
+#### Preflight Validation
+
+Before dispatching to any engine, the dispatcher runs automatic checks:
+
+1. **Engine readiness** — verifies `audit.ts` + `config.ts` exist
+2. **Model auto-detection** — probes known env vars (`ANTHROPIC_MODEL`, `OPENAI_MODEL`, `COPILOT_MODEL`) and `customize.toml`
+3. **Project size estimation** — walks source files, counts LOC, estimates token cost
+4. **Mode recommendation** — if project tokens exceed model context → recommends script-only
+5. **User confirmation** — displays preflight report, user confirms or overrides mode
+
+Bypass with `--skip-preflight` or `PREFLIGHT_SKIP=1`.
 
 ---
 
@@ -288,12 +312,12 @@ npx bmad-method uninstall --directory .
 
 ### Supported Engines
 
-| Engine | Platform | Status |
-|--------|----------|--------|
-| `commerce` | Adobe Commerce / Magento 2 | ✅ Ready |
-| `aem` | AEM as a Cloud Service | 🔲 Planned |
-| `eds` | Edge Delivery Services | 🔲 Planned |
-| `eds-commerce` | EDS + Commerce Hybrid | 🔲 Planned |
+| Engine | Platform | Scanner | Report Gen | Status |
+|--------|----------|:-------:|:----------:|--------|
+| `commerce` | Adobe Commerce / Magento 2 | ✅ | ✅ Excel + MD | Full implementation |
+| `aem` | AEM as a Cloud Service | 🔲 | ✅ Excel + MD | Report ready, scanner TODO |
+| `eds` | Edge Delivery Services | 🔲 | ✅ Excel + MD | Report ready, scanner TODO |
+| `eds-commerce` | EDS + Commerce Hybrid | 🔲 | ✅ Excel + MD | Report ready, scanner TODO |
 
 ### Standalone Scanner (without BMAD)
 
@@ -302,11 +326,14 @@ Run the TypeScript scanner directly:
 ```bash
 cd skills/bmad-dept-code-audit-agent/scripts && npm install
 
-# Auto-detect platform
+# Auto-detect platform (preflight runs automatically)
 npx ts-node run.ts --path /path/to/your/project --name "Project Name"
 
 # Explicit engine
 npx ts-node run.ts --engine commerce --path /path/to/project
+
+# Skip preflight validation
+npx ts-node run.ts --path /project --skip-preflight
 
 # List available engines
 npx ts-node run.ts --list-engines
