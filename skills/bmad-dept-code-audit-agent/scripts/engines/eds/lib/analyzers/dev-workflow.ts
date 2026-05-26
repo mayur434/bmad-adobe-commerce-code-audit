@@ -1,5 +1,5 @@
 /**
- * Dev Workflow Analyzer — EDS-DEV-001 through EDS-DEV-005
+ * Dev Workflow Analyzer — EDS-DEV-001 through EDS-DEV-006
  */
 import { Finding, ProjectFiles, EDSConfig, Analyzer } from '../types';
 
@@ -14,6 +14,8 @@ export class DevWorkflowAnalyzer implements Analyzer {
     this.checkBranchProtection(files, findings);
     this.checkCICDSetup(files, findings);
     this.checkDocumentation(files, findings);
+    this.checkHlxIgnore(files, findings);
+    this.checkBuildTools(files, findings);
     return findings;
   }
 
@@ -182,9 +184,76 @@ export class DevWorkflowAnalyzer implements Analyzer {
         category: this.category,
         description: 'README.md is minimal — missing setup/contribution instructions',
         file: 'readme.md',
-        recommendation: 'Document local setup, block architecture, and deployment process',
+        recommendation: `Document local setup and block inventory:\n\n# Project Name\n## Local Development\n1. Install: \`npm install\`\n2. Start: \`npm start\` (runs \`aem up\`)\n3. Open: http://localhost:3000\n\n## Blocks\n- hero: Full-width hero with image and CTA\n- cards: Grid of content cards\n...`,
         score: 1,
       });
+    }
+  }
+
+  /** EDS-DEV-006: Missing .hlxignore */
+  private checkHlxIgnore(files: ProjectFiles, findings: Finding[]): void {
+    const hlxIgnore = files.all.find((f) => f.path === '.hlxignore');
+    if (!hlxIgnore) {
+      findings.push({
+        rule: 'EDS-DEV-006',
+        severity: 'LOW',
+        category: this.category,
+        description: 'Missing .hlxignore — dev files (package.json, README, etc.) served by CDN publicly',
+        recommendation: `Create .hlxignore to exclude non-production files from CDN:\n\n# .hlxignore\n.github\n.vscode\n.husky\nnode_modules\ntest\ntools\ndocs\n*.md\npackage.json\npackage-lock.json\n.eslintrc.js\n.stylelintrc.json\n.gitignore`,
+        score: 1,
+      });
+    }
+  }
+
+  /** EDS-QUAL-006: Build tools in EDS project (zero-build architecture violation) */
+  private checkBuildTools(files: ProjectFiles, findings: Finding[]): void {
+    if (!files.packageJson) return;
+
+    try {
+      const pkg = JSON.parse(files.packageJson.content);
+      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+      const buildTools = [
+        { name: 'webpack', desc: 'bundler' },
+        { name: 'webpack-cli', desc: 'bundler CLI' },
+        { name: 'rollup', desc: 'bundler' },
+        { name: 'vite', desc: 'bundler/dev server' },
+        { name: 'parcel', desc: 'bundler' },
+        { name: 'esbuild', desc: 'bundler' },
+        { name: '@babel/core', desc: 'transpiler' },
+        { name: 'babel-loader', desc: 'transpiler' },
+        { name: 'typescript', desc: 'compiler' },
+      ];
+
+      const found = buildTools.filter((t) => allDeps[t.name]);
+      if (found.length > 0) {
+        const toolList = found.map((t) => `${t.name} (${t.desc})`).join(', ');
+        findings.push({
+          rule: 'EDS-QUAL-006',
+          severity: 'HIGH',
+          category: this.category,
+          description: `Build tools found in EDS project: ${toolList} — EDS is zero-build architecture`,
+          file: 'package.json',
+          recommendation: `Remove build tools — EDS ships source directly to CDN (no bundling/transpiling needed):\n\n// Remove from devDependencies:\n${found.map(t => `// "${t.name}"`).join('\n')}\n\n// CDN handles minification automatically.\n// package.json should only have: @adobe/aem-cli, eslint, stylelint`,
+          score: 7,
+        });
+      }
+
+      // Check for build scripts
+      const scripts = pkg.scripts || {};
+      if (scripts.build && !/lint|test/.test(scripts.build)) {
+        findings.push({
+          rule: 'EDS-QUAL-006',
+          severity: 'MEDIUM',
+          category: this.category,
+          description: `"build" script detected: "${scripts.build}" — EDS doesn't need a build step`,
+          file: 'package.json',
+          recommendation: `Remove "build" script. EDS CDN serves source directly:\n\n// Remove: "build": "${scripts.build}"\n// Keep: "start": "aem up", "lint": "eslint . && stylelint '**/*.css'"`,
+          score: 4,
+        });
+      }
+    } catch {
+      // Already flagged by checkPackageJson
     }
   }
 }

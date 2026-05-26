@@ -31,6 +31,33 @@ export interface AuditResult {
   overallScore: number;
   severityBreakdown: Record<Severity, number>;
   categories: CategoryResult[];
+  pageSpeedResults?: PageSpeedSummary[];
+  lowScoreFiles?: FileScoreSummary[];
+}
+
+export interface PageSpeedSummary {
+  url: string;
+  strategy: 'mobile' | 'desktop';
+  score: number;
+  lcp: number;
+  cls: number;
+  inp: number;
+  fcp: number;
+  ttfb: number;
+  tbt: number;
+  topOpportunity: string;
+  status: 'PASS' | 'NEEDS_WORK' | 'FAIL';
+}
+
+export interface FileScoreSummary {
+  file: string;
+  score: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  topIssue: string;
+  recommendation: string;
 }
 
 export interface EDSConfig {

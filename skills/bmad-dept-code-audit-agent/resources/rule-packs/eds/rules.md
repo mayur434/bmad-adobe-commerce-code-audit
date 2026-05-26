@@ -349,7 +349,7 @@ export default function decorate(block) {
 ### EDS-ARCH-005: Improper head.html Structure
 
 - **Severity**: High
-- **Description**: `head.html` is a fragment injected into every page's `<head>`. It must remain minimal — only meta tags, preconnects, and favicon. No render-blocking scripts, no inline styles, no marketing technology. Everything else belongs in `scripts.js` or `delayed.js`.
+- **Description**: `head.html` is a fragment injected into every page's `<head>`. As of 2025 aem-boilerplate, it **must** include nonce-based `type="module"` scripts (`aem.js` and `scripts.js`) and a `<link rel="stylesheet">` for `styles.css`. Third-party scripts, inline styles, and external stylesheets do NOT belong here — they must load in `delayed.js`.
 
 #### Detect — Files to Scan
 ```
@@ -358,22 +358,30 @@ head.html
 
 #### Detect — Bad Pattern
 ```regex
-<script\s+(?!.*type="application/ld\+json")
+<script\s+(?!nonce="aem")(?!.*type="application/ld\+json")
 <style>
 <link\s+rel="stylesheet"\s+href="https://
 ```
 
+- Third-party `<script>` tags (without `nonce="aem"` and not `type="module"`)
+- Inline `<style>` blocks
+- External stylesheets from third-party CDNs (Google Fonts, etc.)
+- Marketing tags (GTM, analytics) in head.html instead of delayed.js
+
 #### Detect — Good Pattern
 ```html
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="/icons/favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<meta http-equiv="Content-Security-Policy"
+  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"
+  move-to-http-header="true">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<script nonce="aem" src="/scripts/aem.js" type="module"></script>
+<script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+<link rel="stylesheet" href="/styles/styles.css"/>
 ```
 
 #### Bad Example
 ```html
-<!-- head.html — bloated -->
+<!-- head.html — WRONG: third-party scripts, inline styles -->
 <style>body { font-family: 'Custom Font'; }</style>
 <script src="https://cdn.adobe.com/alloy.min.js"></script>
 <script>window.dataLayer = window.dataLayer || [];</script>
@@ -382,20 +390,27 @@ head.html
 
 #### Good Example
 ```html
-<!-- head.html — minimal -->
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- head.html — CORRECT: nonce-based modules + same-origin CSS only -->
+<meta http-equiv="Content-Security-Policy"
+  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"
+  move-to-http-header="true">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<script nonce="aem" src="/scripts/aem.js" type="module"></script>
+<script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+<link rel="stylesheet" href="/styles/styles.css"/>
+<link rel="icon" href="/icons/favicon.ico" sizes="32x32"/>
 ```
 
 #### False Positives
+- `<script nonce="aem" src="/scripts/aem.js" type="module">` — this is CORRECT (first-party nonce'd module)
+- `<script nonce="aem" src="/scripts/scripts.js" type="module">` — this is CORRECT
 - `<script type="application/ld+json">` for structured data (not render-blocking)
 - `<meta>` tags for CSP or verification codes
 
 #### Related Rules
 - `EDS-PERF-001` (render-blocking scripts)
 - `EDS-ARCH-003` (loading strategy)
+- `EDS-SEC-003` (CSP — nonce-based policy defined here)
 
 ---
 
@@ -502,6 +517,294 @@ export default function decorate(block) {
 #### False Positives
 - Section metadata for background images (common, acceptable)
 - Section metadata for animation triggers (acceptable presentation concern)
+
+---
+
+### EDS-ARCH-008: Missing lang Attribute on HTML
+
+- **Severity**: Medium
+- **Description**: The `<html>` element MUST have a `lang` attribute for accessibility (screen readers) and SEO. In EDS, this is typically set via page metadata or `scripts.js` based on content language. Missing `lang` causes WCAG 3.1.1 failure and reduces SEO scores.
+
+#### Detect — Files to Scan
+```
+scripts/scripts.js
+scripts/aem.js
+head.html
+```
+
+#### Detect — Bad Pattern
+- No mechanism to set `document.documentElement.lang`
+- Hard-coded `lang="en"` without supporting multi-language content
+
+#### Detect — Good Pattern
+```javascript
+// scripts/scripts.js — set lang from metadata
+const lang = getMetadata('lang') || 'en';
+document.documentElement.lang = lang;
+```
+
+#### Bad Example
+```html
+<!-- No lang attribute set anywhere — accessibility failure -->
+<!DOCTYPE html>
+<html>
+<head>...</head>
+</html>
+```
+
+#### Good Example
+```javascript
+// scripts/scripts.js
+function buildPage() {
+  const lang = getMetadata('lang') || document.documentElement.lang || 'en';
+  document.documentElement.lang = lang;
+}
+```
+
+#### False Positives
+- EDS sets lang server-side via Franklin rendering (check page source)
+- Single-language sites where lang is in the AEM page template
+
+---
+
+### EDS-ARCH-009: Missing Body-Hidden Anti-Flicker Pattern
+
+- **Severity**: Medium
+- **Description**: EDS uses a `body { display: none }` pattern in `styles.css` that is removed by `scripts.js` after decoration completes. This prevents FOUC (flash of unstyled content). Without this pattern, users see raw HTML before blocks are decorated, causing CLS and poor UX.
+
+#### Detect — Files to Scan
+```
+styles/styles.css
+scripts/scripts.js
+scripts/aem.js
+```
+
+#### Detect — Bad Pattern
+- No `body { display: none }` or `body { visibility: hidden }` in styles.css
+- No `document.body.style.display = ''` or class removal in scripts.js
+- Body shown before `loadBlocks()` completes
+
+#### Detect — Good Pattern
+```css
+/* styles/styles.css */
+body { display: none; }
+body.appear { display: block; }
+```
+
+```javascript
+// scripts/scripts.js
+async function loadPage() {
+  await loadEager(document);
+  document.body.classList.add('appear');
+  await loadLazy(document);
+  loadDelayed();
+}
+```
+
+#### Bad Example
+```css
+/* styles/styles.css — WRONG: no FOUC protection */
+body {
+  font-family: var(--body-font-family);
+  margin: 0;
+}
+/* Users see raw unstyled block tables flash before decoration */
+```
+
+#### Good Example
+```css
+/* styles/styles.css — CORRECT: hidden until decorated */
+body {
+  display: none;
+  font-family: var(--body-font-family);
+  margin: 0;
+}
+body.appear {
+  display: block;
+}
+```
+
+```javascript
+// scripts/scripts.js — reveal after decoration
+async function loadEager(doc) {
+  decorateTemplateAndTheme();
+  const main = doc.querySelector('main');
+  if (main) {
+    decorateMain(main);
+    document.body.classList.add('appear');
+    await loadSection(main.querySelector('.section'), waitForFirstImage);
+  }
+}
+```
+
+#### False Positives
+- Projects using CSS `visibility: hidden` / `visibility: visible` instead (equivalent approach)
+- Projects using `:not(.appear)` pattern
+
+---
+
+### EDS-ARCH-010: Using Reserved/Framework CSS Class Names
+
+- **Severity**: Medium
+- **Description**: EDS framework uses specific CSS class names (`section`, `block`, `button-container`, `default-content-wrapper`) that are automatically applied by `aem.js`. Custom code must NOT re-purpose these reserved names or apply them manually, as it creates conflicts with the framework's DOM manipulation.
+
+#### Detect — Files to Scan
+```
+blocks/**/*.js
+blocks/**/*.css
+scripts/scripts.js
+```
+
+#### Detect — Bad Pattern
+```regex
+classList\.(add|toggle)\(['"](?:section|block|button-container|default-content-wrapper)['"]
+querySelector\(['"]\.section['"]
+```
+
+- Manually adding `section` or `block` class to custom elements
+- CSS selectors that assume `.section` nesting structure but override it
+
+#### Detect — Good Pattern
+```javascript
+// Use your own class names, don't reuse framework classes
+block.querySelector('.my-card-wrapper');
+el.classList.add('cards-item');
+```
+
+#### Bad Example
+```javascript
+// WRONG: manually adding framework classes
+const wrapper = document.createElement('div');
+wrapper.classList.add('section'); // Conflicts with aem.js section decoration
+wrapper.classList.add('block');   // Framework will re-decorate this
+```
+
+#### Good Example
+```javascript
+// CORRECT: use block-specific class names
+const wrapper = document.createElement('div');
+wrapper.classList.add('cards-wrapper');
+wrapper.classList.add('cards-grid');
+```
+
+#### False Positives
+- Reading/querying framework classes (`.querySelector('.section')` for navigation)
+- Decorating within a block's own scope
+
+---
+
+### EDS-ARCH-011: Missing waitForFirstImage Pattern
+
+- **Severity**: Low
+- **Description**: The `waitForFirstImage` pattern in `scripts.js` ensures the first section (containing the hero/LCP image) is fully loaded before revealing the page. Without it, the body appears before the LCP image loads, causing visible layout shift and poor LCP timing.
+
+#### Detect — Files to Scan
+```
+scripts/scripts.js
+scripts/aem.js
+```
+
+#### Detect — Bad Pattern
+- No `waitForFirstImage` function or equivalent
+- `document.body.classList.add('appear')` called without waiting for hero image
+- `loadSection()` called without waiting for images
+
+#### Detect — Good Pattern
+```javascript
+async function waitForFirstImage(section) {
+  const lcpCandidate = section.querySelector('img');
+  await new Promise((resolve) => {
+    if (lcpCandidate && !lcpCandidate.complete) {
+      lcpCandidate.addEventListener('load', resolve);
+      lcpCandidate.addEventListener('error', resolve);
+    } else {
+      resolve();
+    }
+  });
+}
+```
+
+#### Bad Example
+```javascript
+// WRONG: reveal page without waiting for LCP image
+async function loadEager(doc) {
+  const main = doc.querySelector('main');
+  decorateMain(main);
+  document.body.classList.add('appear'); // Image hasn't loaded yet!
+}
+```
+
+#### Good Example
+```javascript
+// CORRECT: wait for first image before reveal
+async function loadEager(doc) {
+  const main = doc.querySelector('main');
+  decorateMain(main);
+  await loadSection(main.querySelector('.section'), waitForFirstImage);
+  document.body.classList.add('appear');
+}
+```
+
+#### False Positives
+- Pages without hero images (text-only landing pages)
+- Above-fold sections that don't contain images
+
+---
+
+### EDS-ARCH-012: Fragment Loading Without .plain.html
+
+- **Severity**: Low
+- **Description**: When loading EDS page fragments (e.g., header, footer, modals), the URL MUST use `.plain.html` suffix to get the content fragment without the full page wrapper. Loading without `.plain.html` returns the full page (with header/footer), causing infinite recursion for navigation components.
+
+#### Detect — Files to Scan
+```
+blocks/**/*.js
+scripts/scripts.js
+```
+
+#### Detect — Bad Pattern
+```regex
+fetch\(['"]\/[^'"]*['"](?!.*\.plain\.html).*\)(?=.*innerHTML|.*append|.*fragment)
+```
+
+- Fetching page paths without `.plain.html` when injecting content
+- Fragment loading that doesn't strip the page wrapper
+
+#### Detect — Good Pattern
+```javascript
+const resp = await fetch('/nav.plain.html');
+const html = await resp.text();
+const fragment = document.createElement('div');
+fragment.innerHTML = html;
+```
+
+#### Bad Example
+```javascript
+// WRONG: fetches full page with header/footer (infinite recursion for nav!)
+const resp = await fetch('/nav');
+const html = await resp.text();
+nav.innerHTML = html; // Gets full page including another nav...
+```
+
+#### Good Example
+```javascript
+// CORRECT: .plain.html returns only the content fragment
+async function loadFragment(path) {
+  const resp = await fetch(`${path}.plain.html`);
+  if (resp.ok) {
+    const main = document.createElement('main');
+    main.innerHTML = await resp.text();
+    decorateMain(main);
+    await loadBlocks(main);
+    return main;
+  }
+  return null;
+}
+```
+
+#### False Positives
+- Fetching API endpoints or JSON (not page fragments)
+- Fetching from external services
 
 ---
 
@@ -831,64 +1134,80 @@ export default function decorate(block) {
 
 ---
 
-### EDS-PERF-005: Missing Resource Hints
+### EDS-PERF-005: Unnecessary Resource Hints Before LCP
 
-- **Severity**: Medium
-- **Description**: Critical third-party origins should have `preconnect` hints in `head.html`. Fonts, CDN origins, and API endpoints benefit from early connection establishment (DNS + TCP + TLS handshake saved).
+- **Severity**: High
+- **Description**: `<link rel="preconnect">`, `<link rel="preload">`, and `fetchpriority="high"` before LCP **actively hurt** performance on bandwidth-constrained mobile. Adobe's official "Keeping it 100" documentation states: "Contrary to popular belief, adding `<link rel="preload">` or `fetchpriority="high"` does NOT improve LCP but has a significant negative impact." The 100kb network budget before LCP only supports a single origin. Preconnects to second origins consume that budget with TLS/DNS overhead.
 
 #### Detect — Files to Scan
 ```
 head.html
 scripts/scripts.js
-scripts/delayed.js
-blocks/**/*.js
 ```
 
 #### Detect — Bad Pattern
-- Third-party fetch/script URLs used without corresponding `<link rel="preconnect">` in `head.html`
-- Font imports from external origins without preconnect
-- Multiple resources from same origin without single preconnect
+```regex
+<link\s+rel="preload"
+<link\s+rel="preconnect"\s+href="https://(?!fonts)
+fetchpriority\s*=\s*["']high["']
+```
+
+- Any `<link rel="preload">` in head.html (consumes LCP bandwidth budget)
+- `<link rel="preconnect">` to external origins loaded before LCP
+- `fetchpriority="high"` on resources (does not improve PSI score)
+- Multiple external origins referenced before LCP event
 
 #### Detect — Good Pattern
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdn.example.com">
-```
+- NO preloads or preconnects in head.html (zero external origins before LCP)
+- Third-party resources loaded ONLY in delayed.js (3+ seconds after LCP)
+- All pre-LCP resources served from same origin (`.aem.page`/`.aem.live`)
 
 #### Bad Example
 ```html
-<!-- head.html — no preconnects -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-<!-- Browser discovers fonts.gstatic.com only after CSS is parsed — 300ms+ delay -->
+<!-- head.html — WRONG: preloads/preconnects hurt mobile LCP -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="/fonts/custom.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/styles/styles.css" as="style">
+<!-- Each preconnect = TLS handshake consuming the 100kb budget -->
 ```
 
-```javascript
-// blocks/map/map.js
-export default async function decorate(block) {
-  // Browser starts connection to maps API only here — too late
-  const response = await fetch('https://maps.googleapis.com/maps/api/...');
-}
+```html
+<!-- WRONG: fetchpriority doesn't help -->
+<img fetchpriority="high" src="/media/hero.jpg" alt="Hero">
 ```
 
 #### Good Example
 ```html
-<!-- head.html — preconnect to known origins -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://maps.googleapis.com">
+<!-- head.html — CORRECT: minimal, single-origin before LCP -->
+<meta http-equiv="Content-Security-Policy"
+  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"
+  move-to-http-header="true">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<script nonce="aem" src="/scripts/aem.js" type="module"></script>
+<script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+<link rel="stylesheet" href="/styles/styles.css"/>
+<!-- NO preconnects, NO preloads — keep single origin before LCP -->
+```
 
-<!-- Preload critical font (used above fold) -->
-<link rel="preload" href="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjQ.woff2"
-      as="font" type="font/woff2" crossorigin>
+```javascript
+// scripts/delayed.js — external resources load AFTER LCP (3s+ delay)
+import { loadScript, loadCSS } from './aem.js';
+
+// Fonts load after LCP, not before
+loadCSS('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+// Analytics in delayed phase
+loadScript('https://www.googletagmanager.com/gtag/js?id=GA-XXXXX', { async: true });
 ```
 
 #### False Positives
-- Origins only used in `delayed.js` (preconnect may waste resources if not needed soon)
-- Origins accessed by < 50% of users (conditional features)
+- Projects with custom CDN where preconnect is to the SAME origin (cdn.yourdomain.com serving from same edge)
+- Projects that have measured and proven preconnect helps their specific case (rare, must document proof)
 
 #### Related Rules
-- `EDS-PERF-001` (render-blocking — preconnects help deferred scripts start faster)
+- `EDS-PERF-001` (render-blocking scripts)
+- `EDS-PERF-009` (100kb payload budget before LCP)
 
 ---
 
@@ -1097,6 +1416,223 @@ button.addEventListener('click', async () => {
 
 ---
 
+### EDS-PERF-009: Exceeds 100KB Pre-LCP Payload Budget
+
+- **Severity**: Critical
+- **Description**: Adobe's "Keeping it 100" document establishes a hard **100KB total payload budget** before LCP on mobile 4G. This includes HTML + CSS + JS that loads before the LCP image appears. EDS achieves this by keeping `styles.css` + `scripts.js` + `aem.js` minimal. Any block CSS/JS that loads eagerly eats into this budget. Exceeding it guarantees LCP > 2.5s on mobile.
+
+#### Detect — Files to Scan
+```
+styles/styles.css
+scripts/aem.js
+scripts/scripts.js
+```
+
+#### Detect — Bad Pattern
+- Combined size of `styles.css` + `scripts.js` + `aem.js` exceeds 100KB (uncompressed)
+- Eager-loading block CSS/JS files referenced in scripts.js without lazy-loading
+- Large utility libraries imported at top level
+
+#### Detect — Good Pattern
+- `styles.css` < 30KB, `scripts.js` < 20KB, `aem.js` < 15KB
+- Block CSS/JS loaded on-demand when block enters viewport
+- No utility libraries in critical path
+
+#### Bad Example
+```javascript
+// scripts/scripts.js — WRONG: importing large libraries eagerly
+import { format, parse, addDays, subDays, isAfter, isBefore } from 'date-fns';
+import Swiper from 'swiper';
+import Chart from 'chart.js/auto';
+// Each import adds 30-100KB to the pre-LCP budget
+```
+
+#### Good Example
+```javascript
+// scripts/scripts.js — CORRECT: minimal critical path
+import { loadBlocks, loadCSS, sampleRUM } from './aem.js';
+// Only load what's needed for page structure; blocks load their own deps
+```
+
+#### False Positives
+- Measuring gzip size vs uncompressed (rule uses uncompressed for simplicity)
+
+#### Related Rules
+- `EDS-PERF-001` (render-blocking scripts)
+- `EDS-PERF-005` (resource hints consume bandwidth)
+
+---
+
+### EDS-PERF-010: Second-Origin Resource Before LCP
+
+- **Severity**: High
+- **Description**: Loading any resource from a second origin before LCP adds 1-3 seconds on mobile due to DNS + TCP + TLS handshake overhead. Adobe's keeping-it-100: "The penalty from touching a second origin before the LCP is huge on mobile." ALL third-party resources must load in `delayed.js` (post-LCP).
+
+#### Detect — Files to Scan
+```
+head.html
+styles/styles.css
+scripts/scripts.js
+scripts/aem.js
+```
+
+#### Detect — Bad Pattern
+```regex
+(href|src|url\()\s*["']?https?://(?!.*\.(aem|hlx)\.(page|live))
+@import\s+url\(['"]https://
+```
+
+- External URLs in head.html (except CSP meta)
+- `@import url('https://...')` in styles.css
+- External `<script src="https://...">` in head.html (without nonce)
+- Font files loaded from Google Fonts CDN before LCP
+
+#### Detect — Good Pattern
+- All pre-LCP resources from same origin (`/scripts/`, `/styles/`, `/blocks/`)
+- External resources only in `delayed.js`
+
+#### Bad Example
+```css
+/* styles/styles.css — WRONG: external font import blocks LCP */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+```
+
+```html
+<!-- head.html — WRONG: external script before LCP -->
+<script src="https://cdn.cookielaw.org/consent.js"></script>
+```
+
+#### Good Example
+```javascript
+// scripts/delayed.js — CORRECT: external resources after LCP
+export default async function loadDelayed() {
+  loadCSS('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+  loadScript('https://cdn.cookielaw.org/consent.js');
+}
+```
+
+#### False Positives
+- `<meta http-equiv="Content-Security-Policy"` content attribute (contains URLs but doesn't load them)
+- Comments containing URLs
+
+#### Related Rules
+- `EDS-PERF-005` (preconnects are also second-origin hits)
+- `EDS-PERF-009` (100KB budget)
+
+---
+
+### EDS-PERF-011: Unnecessary Preloads
+
+- **Severity**: Medium
+- **Description**: `<link rel="preload">` in head.html does NOT improve LCP score and wastes bandwidth. Adobe's research shows preloads have "significant negative impact" on mobile. The browser already discovers critical resources via HTML parsing. Preloads only help when a resource is referenced late (e.g., background-image in CSS) — but EDS architecture avoids that pattern.
+
+#### Detect — Files to Scan
+```
+head.html
+```
+
+#### Detect — Bad Pattern
+```regex
+<link\s+rel="preload"
+```
+
+#### Detect — Good Pattern
+- No `<link rel="preload">` in head.html
+- Critical resources referenced directly in HTML (discoverable by parser)
+
+#### Bad Example
+```html
+<!-- head.html — WRONG: preloads waste mobile bandwidth -->
+<link rel="preload" href="/styles/styles.css" as="style">
+<link rel="preload" href="/scripts/aem.js" as="script">
+<link rel="preload" href="/media/hero.webp" as="image">
+```
+
+#### Good Example
+```html
+<!-- head.html — CORRECT: no preloads needed, resources already discoverable -->
+<link rel="stylesheet" href="/styles/styles.css"/>
+<script nonce="aem" src="/scripts/aem.js" type="module"></script>
+<!-- Browser discovers these immediately from HTML, no preload needed -->
+```
+
+#### False Positives
+- Preloads for resources only referenced in CSS (e.g., critical font-face src) — rare but valid use case
+
+#### Related Rules
+- `EDS-PERF-005` (preconnects)
+- `EDS-PERF-009` (100KB budget)
+
+---
+
+### EDS-PERF-012: Non-Conditional Font Loading
+
+- **Severity**: Medium
+- **Description**: Fonts should be loaded conditionally only when the page actually uses the font. Loading multiple font weights/families that may not be used on every page wastes bandwidth. In EDS, fonts should load in `delayed.js` or use `IntersectionObserver` to load only when content with that font enters viewport.
+
+#### Detect — Files to Scan
+```
+styles/styles.css
+styles/fonts.css
+head.html
+scripts/delayed.js
+```
+
+#### Detect — Bad Pattern
+- `@font-face` with multiple weights loaded unconditionally in styles.css
+- More than 3 font variations loaded globally
+- Google Fonts `<link>` loading 5+ weights
+
+#### Detect — Good Pattern
+```javascript
+// Load fonts in delayed.js — after LCP
+export default async function loadDelayed() {
+  const fontCSS = '/styles/fonts.css';
+  if (!window.hlx.lighthouse) loadCSS(fontCSS);
+}
+```
+
+```css
+/* styles/fonts.css — only 2-3 critical weights */
+@font-face {
+  font-family: 'Brand';
+  src: url('/fonts/brand-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Brand';
+  src: url('/fonts/brand-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+```
+
+#### Bad Example
+```css
+/* styles/styles.css — WRONG: loading all weights eagerly */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100;200;300;400;500;600;700;800;900&display=swap');
+```
+
+#### Good Example
+```javascript
+// scripts/delayed.js — CORRECT: conditional font loading
+export default async function loadDelayed() {
+  // Load fonts only after LCP
+  loadCSS('/styles/fonts.css');
+}
+```
+
+#### False Positives
+- System font stacks that don't load any font files
+- Single-weight brand font that's used on every page (acceptable)
+
+#### Related Rules
+- `EDS-PERF-006` (font-display, font loading strategy)
+- `EDS-PERF-010` (Google Fonts = second origin)
+
+---
+
 ## Security Rules
 
 ---
@@ -1268,10 +1804,10 @@ block.innerHTML = clean;
 
 ---
 
-### EDS-SEC-003: Missing Content Security Policy
+### EDS-SEC-003: Missing or Weak Content Security Policy
 
 - **Severity**: Medium
-- **Description**: A Content Security Policy (CSP) restricts which resources can be loaded, mitigating XSS impact. EDS projects should define CSP headers via `head.html` meta tag or CDN edge rules to restrict `script-src`, `style-src`, and other directives.
+- **Description**: EDS 2025+ uses a **nonce-based CSP** with `'strict-dynamic'` in `head.html`. The nonce (`"aem"`) is applied to first-party scripts, and `'strict-dynamic'` allows those scripts to load additional resources. The `move-to-http-header="true"` attribute instructs the CDN to promote it from meta tag to HTTP header for stronger enforcement. Projects without CSP or using outdated `unsafe-inline`/`unsafe-eval` patterns are vulnerable to XSS.
 
 #### Detect — Files to Scan
 ```
@@ -1280,49 +1816,62 @@ head.html
 
 #### Detect — Bad Pattern
 - No CSP meta tag in `head.html`
-- CSP with `unsafe-inline` for `script-src` (defeats XSS protection)
 - CSP with `unsafe-eval` (allows eval-based attacks)
-- Missing CSP entirely
+- CSP using allowlist domains without nonce (bypassable via JSONP endpoints)
+- CSP missing `'strict-dynamic'` (won't propagate trust to dynamically loaded scripts)
+- Missing `move-to-http-header="true"` attribute
 
 #### Detect — Good Pattern
 ```html
 <meta http-equiv="Content-Security-Policy"
-  content="default-src 'self'; script-src 'self' https://cdn.example.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.example.com;">
+  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"
+  move-to-http-header="true">
 ```
 
 #### Bad Example
 ```html
-<!-- head.html — no CSP at all -->
+<!-- WRONG: No CSP at all -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Missing CSP = no protection against injected scripts -->
 ```
 
 ```html
-<!-- Overly permissive CSP = useless -->
+<!-- WRONG: Overly permissive CSP -->
 <meta http-equiv="Content-Security-Policy"
   content="default-src *; script-src * 'unsafe-inline' 'unsafe-eval';">
 ```
 
-#### Good Example
 ```html
+<!-- WRONG: Domain allowlist without nonce (outdated pattern, bypassable) -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' https://www.googletagmanager.com https://cdn.cookielaw.org;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  img-src 'self' data: https:;
-  font-src 'self' https://fonts.gstatic.com;
-  connect-src 'self' https://rum.hlx.page https://admin.hlx.page;
-  frame-src https://www.youtube.com https://player.vimeo.com;
-">
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
 ```
+
+#### Good Example
+```html
+<!-- CORRECT: Nonce-based CSP with strict-dynamic (2025 aem-boilerplate pattern) -->
+<meta http-equiv="Content-Security-Policy"
+  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"
+  move-to-http-header="true">
+```
+
+**How it works:**
+- `'nonce-aem'` — only scripts with `nonce="aem"` attribute execute
+- `'strict-dynamic'` — scripts loaded by trusted scripts (aem.js, scripts.js) are also trusted
+- `'unsafe-inline'` — fallback for older browsers that don't support nonce (ignored when nonce is present)
+- `http: https:` — fallback for very old browsers
+- `move-to-http-header="true"` — CDN promotes to HTTP header (stronger than meta tag)
 
 #### False Positives
 - CSP managed at CDN/edge level (Fastly, Cloudflare) rather than in HTML (check CDN config)
 - Development environments where CSP is intentionally relaxed
 
 #### Related Rules
-- `EDS-SEC-001` (inline handlers — require `unsafe-inline` in CSP if present)
+- `EDS-ARCH-005` (head.html structure — CSP is defined there)
+- `EDS-SEC-001` (inline handlers — blocked by nonce-based CSP)
 - `EDS-SEC-002` (innerHTML — CSP limits damage even if XSS exists)
 
 ---
@@ -2010,6 +2559,94 @@ import { fetchJSON } from '../../scripts/utils.js';
 
 ---
 
+### EDS-QUAL-006: Unnecessary Build Steps or Bundling
+
+- **Severity**: High
+- **Description**: EDS is a **zero-build architecture** — code ships directly to CDN without bundling, transpiling, or minification. Adding webpack, Vite, Rollup, or other build tools breaks this principle and indicates misunderstanding of EDS. The CDN handles minification automatically. Source maps, tree-shaking, and HMR are unnecessary because modules load natively.
+
+#### Detect — Files to Scan
+```
+package.json
+webpack.config.js
+vite.config.js
+rollup.config.js
+tsconfig.json
+babel.config.js
+.babelrc
+```
+
+#### Detect — Bad Pattern
+- `webpack`, `rollup`, `vite`, `parcel` in devDependencies
+- `babel`, `typescript` (for compilation) in devDependencies
+- Build scripts: `"build": "webpack"`, `"build": "vite build"`
+- `dist/` or `build/` directories in project
+- `.babelrc` or `babel.config.js` present
+
+#### Detect — Good Pattern
+```json
+// package.json — CORRECT: no build tools, only lint + dev server
+{
+  "scripts": {
+    "start": "aem up",
+    "lint": "npm run lint:js && npm run lint:css",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint 'blocks/**/*.css' 'styles/**/*.css'"
+  },
+  "devDependencies": {
+    "@adobe/aem-cli": "^18.0.0",
+    "eslint": "^8.57.0",
+    "stylelint": "^16.0.0"
+  }
+}
+```
+
+#### Bad Example
+```json
+// package.json — WRONG: build tools in EDS project
+{
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve"
+  },
+  "devDependencies": {
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0",
+    "babel-loader": "^9.0.0",
+    "@babel/core": "^7.0.0",
+    "@babel/preset-env": "^7.0.0"
+  }
+}
+```
+
+#### Good Example
+```json
+// package.json — CORRECT: EDS needs only lint and dev server
+{
+  "name": "my-eds-project",
+  "private": true,
+  "scripts": {
+    "start": "aem up",
+    "lint": "npm run lint:js && npm run lint:css",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint 'blocks/**/*.css' 'styles/**/*.css'"
+  },
+  "devDependencies": {
+    "@adobe/aem-cli": "^18.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "stylelint": "^16.0.0",
+    "stylelint-config-standard": "^36.0.0"
+  }
+}
+```
+
+#### False Positives
+- Build tools for non-EDS parts of the project (e.g., serverless functions, backend)
+- TypeScript for type-checking only (no emit) with separate `tsconfig.json`
+
+---
+
 ## Linting & Code Standards Rules
 
 ---
@@ -2632,6 +3269,58 @@ Non-standard breakpoints (anything other than 600/900/1200 without justification
 
 ---
 
+### EDS-CSS-006: Using Deprecated Media Query Syntax
+
+- **Severity**: Low
+- **Description**: CSS Level 4 range media query syntax (`@media (width >= 900px)`) is the modern standard and more readable, but EDS projects should use consistent syntax. More importantly, ALL EDS projects should use the standard breakpoint variables defined in `styles.css` (typically 600px/900px/1200px) via CSS custom properties or consistent values across all block stylesheets.
+
+#### Detect — Files to Scan
+```
+blocks/**/*.css
+styles/styles.css
+```
+
+#### Detect — Bad Pattern
+- Inconsistent breakpoint values across block CSS files (one uses 768px, another uses 900px)
+- Magic number breakpoints without documentation
+- Using both `max-width` and `min-width` in the same file (mixing paradigms)
+
+#### Detect — Good Pattern
+```css
+/* Consistent min-width breakpoints matching styles.css variables */
+@media (min-width: 600px) { /* tablet */ }
+@media (min-width: 900px) { /* desktop */ }
+@media (min-width: 1200px) { /* wide desktop */ }
+```
+
+#### Bad Example
+```css
+/* blocks/cards/cards.css — WRONG: inconsistent breakpoints */
+@media (max-width: 768px) { .cards { flex-direction: column; } }
+@media (min-width: 1024px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+/* Uses different breakpoints than other blocks (600/900/1200) */
+```
+
+#### Good Example
+```css
+/* blocks/cards/cards.css — CORRECT: consistent EDS breakpoints */
+.cards { display: flex; flex-direction: column; gap: 1rem; }
+
+@media (min-width: 600px) {
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 900px) {
+  .cards { grid-template-columns: repeat(3, 1fr); }
+}
+```
+
+#### False Positives
+- Breakpoints for very specific components (modals, tooltips)
+- Third-party widget CSS with its own breakpoints
+
+---
+
 ## JavaScript Advanced Rules
 
 ---
@@ -2921,6 +3610,60 @@ export function loadBlockWithTracking(block) {
 #### False Positives
 - `aem.js` loaded from a specific pinned version (acceptable for version locking)
 - Minor whitespace differences from auto-formatting (check semantic diff)
+
+---
+
+### EDS-JS-005: Missing .js Extension in Imports
+
+- **Severity**: Medium
+- **Description**: EDS serves JavaScript as native ES modules directly from CDN — there is NO bundler or module resolver. All `import` statements MUST include the `.js` file extension. Without it, the browser returns a 404 because it cannot resolve bare specifiers or extensionless paths.
+
+#### Detect — Files to Scan
+```
+blocks/**/*.js
+scripts/**/*.js
+```
+
+#### Detect — Bad Pattern
+```regex
+import\s+.*from\s+['"]\.\.?\/[^'"]*(?<!\.js)['"]
+export\s+.*from\s+['"]\.\.?\/[^'"]*(?<!\.js)['"]
+```
+
+- `import { foo } from './utils'` (missing .js)
+- `import { loadCSS } from '../scripts/aem'` (missing .js)
+- `export { bar } from './helpers'` (missing .js)
+
+#### Detect — Good Pattern
+```javascript
+import { loadCSS, loadBlock } from '../../scripts/aem.js';
+import { createOptimizedPicture } from '../../scripts/aem.js';
+import { buildBlock, decorateBlock } from '../../scripts/aem.js';
+```
+
+#### Bad Example
+```javascript
+// blocks/cards/cards.js — WRONG: missing .js extension
+import { createOptimizedPicture } from '../../scripts/aem';
+import { readBlockConfig } from '../../scripts/utils';
+// Browser fetches /scripts/aem (no extension) → 404 Not Found
+```
+
+#### Good Example
+```javascript
+// blocks/cards/cards.js — CORRECT: .js extension included
+import { createOptimizedPicture } from '../../scripts/aem.js';
+import { readBlockConfig } from '../../scripts/utils.js';
+```
+
+#### False Positives
+- Importing from npm packages (won't exist in EDS anyway, but not an extension issue)
+- Importing JSON files: `import data from './config.json'`
+- Dynamic imports with computed paths
+
+#### Related Rules
+- `EDS-JS-004` (modifying aem.js — imports should reference unmodified aem.js)
+- `EDS-ARCH-003` (loading strategy — correct imports enable tree-shaking)
 
 ---
 
@@ -3385,14 +4128,77 @@ README.md
 
 ---
 
+### EDS-DEV-006: Missing .hlxignore File
+
+- **Severity**: Low
+- **Description**: The `.hlxignore` file tells the AEM CDN which files/folders should NOT be served publicly. Without it, development-only files (test utilities, documentation, config files) are publicly accessible via the CDN, potentially leaking internal information.
+
+#### Detect — Files to Scan
+```
+.hlxignore
+```
+
+#### Detect — Bad Pattern
+- No `.hlxignore` file exists
+- `.hlxignore` exists but doesn't exclude common dev files
+
+#### Detect — Good Pattern
+```
+# .hlxignore
+.github
+.vscode
+node_modules
+test
+tools
+README.md
+CONTRIBUTING.md
+package.json
+package-lock.json
+.eslintrc.js
+.stylelintrc.json
+```
+
+#### Bad Example
+```
+# No .hlxignore — ALL files served by CDN including:
+# - package.json (exposes dependency versions)
+# - .eslintrc.js (internal config)
+# - README.md (internal docs)
+# - test/ folder (test utilities)
+```
+
+#### Good Example
+```
+# .hlxignore — exclude dev files from CDN
+.github
+.vscode
+.husky
+node_modules
+test
+tools
+docs
+*.md
+package.json
+package-lock.json
+.eslintrc.js
+.stylelintrc.json
+.gitignore
+```
+
+#### False Positives
+- Projects using `.hlx` directory structure (older EDS versions)
+- Projects where all files are intentionally public
+
+---
+
 ## Git Hooks & Pre-Commit Rules
 
 ---
 
 ### EDS-HOOKS-001: Missing Husky Integration
 
-- **Severity**: High
-- **Description**: Project MUST have `husky` installed to enforce code quality checks before every commit. Without pre-commit hooks, broken code reaches the repository unchecked — relying solely on CI creates a slow feedback loop and pollutes git history with fix-up commits.
+- **Severity**: Low
+- **Description**: Project MAY use `husky` to enforce code quality checks before every commit. Note: The official Adobe `aem-boilerplate` does NOT include husky or lint-staged — this is an **advisory** recommendation for teams who want pre-commit enforcement. Without pre-commit hooks, code quality relies on CI pipeline and manual discipline.
 
 #### Detect — Files to Scan
 ```
@@ -3483,8 +4289,8 @@ npx lint-staged
 
 ### EDS-HOOKS-002: Missing lint-staged in Pre-Commit
 
-- **Severity**: High
-- **Description**: Pre-commit hook must use `lint-staged` to run ESLint and Stylelint only on staged files. Running full-repo lint on every commit is slow and discourages frequent commits. `lint-staged` provides fast, targeted checks.
+- **Severity**: Low
+- **Description**: If using pre-commit hooks, they should use `lint-staged` to run ESLint and Stylelint only on staged files. Note: The official Adobe `aem-boilerplate` does NOT include lint-staged — this is **advisory** for teams already using husky. Running full-repo lint on every commit is slow and discourages frequent commits.
 
 #### Detect — Files to Scan
 ```

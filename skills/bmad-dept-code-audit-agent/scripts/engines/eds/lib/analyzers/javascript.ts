@@ -1,5 +1,5 @@
 /**
- * JavaScript Analyzer — EDS-JS-001 through EDS-JS-004
+ * JavaScript Analyzer — EDS-JS-001 through EDS-JS-005
  */
 import { Finding, ProjectFiles, EDSConfig, Analyzer } from '../types';
 
@@ -13,6 +13,7 @@ export class JavaScriptAnalyzer implements Analyzer {
     this.checkAsyncAwait(files, findings);
     this.checkDomApi(files, findings);
     this.checkEventDelegation(files, findings);
+    this.checkImportExtensions(files, findings);
     return findings;
   }
 
@@ -149,10 +150,8 @@ export class JavaScriptAnalyzer implements Analyzer {
 
   private checkEventDelegation(files: ProjectFiles, findings: Finding[]): void {
     for (const file of files.blockJs) {
-      // Multiple addEventListener on similar elements (should delegate)
       const addEventMatches = file.content.match(/addEventListener\s*\(\s*['"]click['"]/g) || [];
       if (addEventMatches.length > 4) {
-        // Check if they're in a loop (forEach/for)
         if (/forEach\s*\([^)]*\)\s*\{[\s\S]{0,200}addEventListener/.test(file.content) ||
             /for\s*\([\s\S]{0,100}\)\s*\{[\s\S]{0,300}addEventListener/.test(file.content)) {
           findings.push({
@@ -161,7 +160,39 @@ export class JavaScriptAnalyzer implements Analyzer {
             category: this.category,
             description: `${addEventMatches.length} click listeners added in loop — use event delegation`,
             file: file.path,
-            recommendation: 'Add single listener on parent: block.addEventListener("click", (e) => { if (e.target.matches(...)) })',
+            recommendation: `Replace individual listeners with single delegated listener:\n\n// Before: items.forEach(item => item.addEventListener('click', handler));\n\n// After:\nblock.addEventListener('click', (e) => {\n  const item = e.target.closest('.card-item');\n  if (item) handleItemClick(item);\n});`,
+            score: 4,
+          });
+        }
+      }
+    }
+  }
+
+  /** EDS-JS-005: Missing .js extension in imports */
+  private checkImportExtensions(files: ProjectFiles, findings: Finding[]): void {
+    const allJs = [...files.blockJs, ...files.scriptJs];
+    for (const file of allJs) {
+      const lines = file.content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Match relative imports without .js extension
+        const importMatch = line.match(/(?:import|export)\s+.*from\s+['"](\.\.?\/[^'"]+)['"]/);
+        if (importMatch) {
+          const importPath = importMatch[1];
+          // Skip if already has .js, .json, .css extension
+          if (/\.(js|json|css|mjs)$/.test(importPath)) continue;
+          // Skip npm package imports (don't start with ./ or ../)
+          if (!importPath.startsWith('./') && !importPath.startsWith('../')) continue;
+
+          findings.push({
+            rule: 'EDS-JS-005',
+            severity: 'MEDIUM',
+            category: this.category,
+            description: `Import missing .js extension — will 404 on CDN (no bundler in EDS)`,
+            file: file.path,
+            line: i + 1,
+            code: line.trim().substring(0, 120),
+            recommendation: `Add .js extension to the import path:\n\n// Before: import { ... } from '${importPath}'\n// After:  import { ... } from '${importPath}.js'\n\nEDS has no bundler — the browser fetches the exact path you specify.`,
             score: 4,
           });
         }

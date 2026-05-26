@@ -83,47 +83,87 @@ export class SecurityAnalyzer implements Analyzer {
 
   private checkExternalScripts(files: ProjectFiles, findings: Finding[]): void {
     if (!files.headHtml) return;
-    const lines = files.headHtml.content.split('\n');
+    const content = files.headHtml.content;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      // External scripts without integrity
-      if (/<script\s+.*src="https:\/\/(?!cdn\.aem\.live)/.test(line)) {
-        if (!/integrity=/.test(line)) {
-          findings.push({
-            rule: 'EDS-SEC-003',
-            severity: 'HIGH',
-            category: this.category,
-            description: 'External script loaded without Subresource Integrity (SRI)',
-            file: 'head.html',
-            line: i + 1,
-            code: line.trim().substring(0, 120),
-            recommendation: 'Add integrity="sha384-..." and crossorigin="anonymous" attributes',
-            score: 7,
-          });
-        }
+    // EDS-SEC-003: Check for nonce-based CSP (2025 standard)
+    const hasCSP = /Content-Security-Policy/.test(content);
+    const hasNonce = /nonce-aem/.test(content);
+    const hasStrictDynamic = /strict-dynamic/.test(content);
+    const hasMoveToHeader = /move-to-http-header/.test(content);
+
+    if (!hasCSP) {
+      findings.push({
+        rule: 'EDS-SEC-003',
+        severity: 'MEDIUM',
+        category: this.category,
+        description: 'Missing Content Security Policy — no XSS protection',
+        file: 'head.html',
+        recommendation: `Add nonce-based CSP (2025 aem-boilerplate standard):\n\n<meta http-equiv="Content-Security-Policy"\n  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"\n  move-to-http-header="true">`,
+        score: 4,
+      });
+    } else {
+      if (!hasNonce) {
+        findings.push({
+          rule: 'EDS-SEC-003',
+          severity: 'MEDIUM',
+          category: this.category,
+          description: 'CSP present but missing nonce — using outdated allowlist pattern',
+          file: 'head.html',
+          recommendation: `Upgrade to nonce-based CSP:\n\n<meta http-equiv="Content-Security-Policy"\n  content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"\n  move-to-http-header="true">\n\nAdd nonce="aem" to all <script> tags in head.html.`,
+          score: 4,
+        });
+      }
+      if (hasNonce && !hasStrictDynamic) {
+        findings.push({
+          rule: 'EDS-SEC-003',
+          severity: 'LOW',
+          category: this.category,
+          description: 'CSP has nonce but missing strict-dynamic — dynamically loaded scripts may be blocked',
+          file: 'head.html',
+          recommendation: `Add 'strict-dynamic' to script-src directive — allows nonce'd scripts to load additional scripts.`,
+          score: 1,
+        });
+      }
+      if (!hasMoveToHeader) {
+        findings.push({
+          rule: 'EDS-SEC-003',
+          severity: 'LOW',
+          category: this.category,
+          description: 'CSP meta tag missing move-to-http-header="true" — weaker than HTTP header',
+          file: 'head.html',
+          recommendation: `Add move-to-http-header="true" attribute so CDN promotes CSP to HTTP header:\n\n<meta http-equiv="Content-Security-Policy" ... move-to-http-header="true">`,
+          score: 1,
+        });
+      }
+      if (/unsafe-eval/.test(content)) {
+        findings.push({
+          rule: 'EDS-SEC-003',
+          severity: 'HIGH',
+          category: this.category,
+          description: 'CSP contains unsafe-eval — allows eval()-based XSS attacks',
+          file: 'head.html',
+          recommendation: `Remove 'unsafe-eval' from CSP. If a library needs eval(), replace that library.`,
+          score: 7,
+        });
       }
     }
 
-    // Also check JS files for dynamically loaded scripts
-    for (const file of files.scriptJs) {
-      const lines = file.content.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (/loadScript\s*\(\s*['"]https:\/\//.test(lines[i]) || /script\.src\s*=\s*['"]https:\/\//.test(lines[i])) {
-          // Just informational — SRI is harder for dynamic scripts
-          findings.push({
-            rule: 'EDS-SEC-003',
-            severity: 'MEDIUM',
-            category: this.category,
-            description: 'External script loaded dynamically — verify trusted source',
-            file: file.path,
-            line: i + 1,
-            code: lines[i].trim().substring(0, 120),
-            recommendation: 'Ensure domain is trusted. Consider SRI or version-pinning the URL.',
-            score: 4,
-          });
-          break; // One per file
-        }
+    // Check for external scripts without nonce in head.html
+    const lines = content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (/<script\s+(?!.*nonce).*src="https:\/\//.test(line) && !/type="application\/ld\+json"/.test(line)) {
+        findings.push({
+          rule: 'EDS-SEC-003',
+          severity: 'HIGH',
+          category: this.category,
+          description: 'External script without nonce attribute — blocked by CSP',
+          file: 'head.html',
+          line: i + 1,
+          code: line.trim().substring(0, 120),
+          recommendation: `Either add nonce="aem" (for first-party) or move to delayed.js (for third-party):\n\n// First-party: <script nonce="aem" src="/scripts/..." type="module">\n// Third-party: move to scripts/delayed.js`,
+          score: 7,
+        });
       }
     }
   }

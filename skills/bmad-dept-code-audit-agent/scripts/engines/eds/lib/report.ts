@@ -3,7 +3,7 @@
  */
 import ExcelJS from 'exceljs';
 import * as path from 'path';
-import { AuditResult, CategoryResult, Finding } from './types';
+import { AuditResult, CategoryResult, Finding, PageSpeedSummary, FileScoreSummary } from './types';
 import {
   TITLE_FONT, BODY_FONT, CODE_FONT, SCORE_FONT,
   styleHeaderRow, applyZebraAndBorders, colorSeverityCol,
@@ -18,6 +18,16 @@ export async function generateReport(result: AuditResult, outputPath: string): P
 
   // Summary sheet first
   addSummarySheet(wb, result);
+
+  // PageSpeed Scores sheet (if available)
+  if (result.pageSpeedResults && result.pageSpeedResults.length > 0) {
+    addPageSpeedSheet(wb, result.pageSpeedResults);
+  }
+
+  // Low Score Files sheet (if available)
+  if (result.lowScoreFiles && result.lowScoreFiles.length > 0) {
+    addLowScoreFilesSheet(wb, result.lowScoreFiles);
+  }
 
   // Category sheets
   for (const cat of result.categories) {
@@ -146,5 +156,135 @@ function addCategorySheet(wb: ExcelJS.Workbook, cat: CategoryResult): void {
   ws.columns = [
     { width: 14 }, { width: 10 }, { width: 32 }, { width: 6 },
     { width: 45 }, { width: 40 }, { width: 50 }, { width: 6 },
+  ];
+}
+
+function addPageSpeedSheet(wb: ExcelJS.Workbook, results: PageSpeedSummary[]): void {
+  const ws = wb.addWorksheet('PageSpeed Scores');
+
+  // Title
+  ws.mergeCells('A1:J1');
+  const titleCell = ws.getCell('A1');
+  titleCell.value = 'PageSpeed Insights — Per-Page Scores';
+  titleCell.font = { name: 'Calibri', bold: true, size: 14 };
+  ws.getRow(1).height = 25;
+
+  const headers = ['Page URL', 'Strategy', 'Score', 'LCP (s)', 'CLS', 'INP (ms)', 'FCP (s)', 'TTFB (ms)', 'TBT (ms)', 'Top Opportunity', 'Status'];
+  const headerRow = 3;
+  headers.forEach((h, idx) => {
+    const cell = ws.getCell(headerRow, idx + 1);
+    cell.value = h;
+    cell.font = HEADER_FONT;
+    cell.fill = HEADER_FILL;
+    cell.alignment = CENTER_ALIGN;
+    cell.border = HEADER_BORDER;
+  });
+
+  let row = headerRow + 1;
+  for (const r of results) {
+    ws.getCell(row, 1).value = r.url;
+    ws.getCell(row, 2).value = r.strategy;
+    ws.getCell(row, 3).value = r.score;
+    ws.getCell(row, 4).value = (r.lcp / 1000).toFixed(1);
+    ws.getCell(row, 5).value = r.cls.toFixed(3);
+    ws.getCell(row, 6).value = r.inp;
+    ws.getCell(row, 7).value = (r.fcp / 1000).toFixed(1);
+    ws.getCell(row, 8).value = r.ttfb;
+    ws.getCell(row, 9).value = r.tbt;
+    ws.getCell(row, 10).value = r.topOpportunity;
+    ws.getCell(row, 11).value = r.status;
+
+    // Color-code the score cell
+    const scoreCell = ws.getCell(row, 3);
+    if (r.score >= 90) {
+      scoreCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF006600' } };
+    } else if (r.score >= 50) {
+      scoreCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFCC6600' } };
+    } else {
+      scoreCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFCC0000' } };
+    }
+
+    // Color-code the status cell
+    const statusCell = ws.getCell(row, 11);
+    if (r.status === 'PASS') {
+      statusCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF006600' } };
+    } else if (r.status === 'NEEDS_WORK') {
+      statusCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFCC6600' } };
+    } else {
+      statusCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFCC0000' } };
+    }
+
+    row++;
+  }
+
+  applyZebraAndBorders(ws, row - 1, headers.length);
+
+  // Thresholds reference
+  row += 2;
+  ws.getCell(row, 1).value = 'Core Web Vitals Thresholds:';
+  ws.getCell(row, 1).font = { name: 'Calibri', bold: true, size: 10 };
+  row++;
+  ws.getCell(row, 1).value = '  LCP < 2.5s | CLS < 0.1 | INP < 200ms | FCP < 1.8s | TTFB < 800ms | TBT < 200ms';
+  ws.getCell(row, 1).font = { name: 'Consolas', size: 9 };
+
+  ws.columns = [
+    { width: 45 }, { width: 10 }, { width: 7 }, { width: 8 },
+    { width: 7 }, { width: 9 }, { width: 8 }, { width: 10 },
+    { width: 9 }, { width: 35 }, { width: 12 },
+  ];
+}
+
+function addLowScoreFilesSheet(wb: ExcelJS.Workbook, files: FileScoreSummary[]): void {
+  const ws = wb.addWorksheet('Low Score Files');
+
+  // Title
+  ws.mergeCells('A1:H1');
+  const titleCell = ws.getCell('A1');
+  titleCell.value = 'Files Scoring Below 90 — Priority Fix List';
+  titleCell.font = { name: 'Calibri', bold: true, size: 14 };
+  ws.getRow(1).height = 25;
+
+  const headers = ['File', 'Score', 'Critical', 'High', 'Medium', 'Low', 'Top Issue', 'Recommendation'];
+  const headerRow = 3;
+  headers.forEach((h, idx) => {
+    const cell = ws.getCell(headerRow, idx + 1);
+    cell.value = h;
+    cell.font = HEADER_FONT;
+    cell.fill = HEADER_FILL;
+    cell.alignment = CENTER_ALIGN;
+    cell.border = HEADER_BORDER;
+  });
+
+  let row = headerRow + 1;
+  for (const f of files) {
+    ws.getCell(row, 1).value = f.file;
+    ws.getCell(row, 2).value = f.score;
+    ws.getCell(row, 3).value = f.critical;
+    ws.getCell(row, 4).value = f.high;
+    ws.getCell(row, 5).value = f.medium;
+    ws.getCell(row, 6).value = f.low;
+    ws.getCell(row, 7).value = f.topIssue;
+    ws.getCell(row, 7).alignment = WRAP_ALIGN;
+    ws.getCell(row, 8).value = f.recommendation;
+    ws.getCell(row, 8).alignment = WRAP_ALIGN;
+
+    // Color-code score
+    const scoreCell = ws.getCell(row, 2);
+    if (f.score < 50) {
+      scoreCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFCC0000' } };
+    } else if (f.score < 75) {
+      scoreCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFCC6600' } };
+    } else {
+      scoreCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF996600' } };
+    }
+
+    row++;
+  }
+
+  applyZebraAndBorders(ws, row - 1, headers.length);
+
+  ws.columns = [
+    { width: 38 }, { width: 7 }, { width: 8 }, { width: 6 },
+    { width: 8 }, { width: 5 }, { width: 50 }, { width: 55 },
   ];
 }

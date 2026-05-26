@@ -1,5 +1,6 @@
 /**
  * Git Hooks Analyzer — EDS-HOOKS-001 through EDS-HOOKS-003
+ * NOTE: Severities are LOW/advisory — official aem-boilerplate does NOT include husky/lint-staged
  */
 import { Finding, ProjectFiles, EDSConfig, Analyzer } from '../types';
 
@@ -24,11 +25,11 @@ export class GitHooksAnalyzer implements Analyzer {
     if (!hasHusky && huskyFiles.length === 0) {
       findings.push({
         rule: 'EDS-HOOKS-001',
-        severity: 'MEDIUM',
+        severity: 'LOW',
         category: this.category,
-        description: 'No Git hooks framework (husky) installed',
-        recommendation: 'Install: npx husky-init && npm install; Add lint-staged for pre-commit linting',
-        score: 4,
+        description: 'No Git hooks framework — code quality relies on CI/manual review only',
+        recommendation: `Advisory: Consider adding pre-commit hooks for faster feedback (optional — official boilerplate doesn't include this):\n\nnpm install -D husky lint-staged\nnpx husky init\n\n// package.json:\n"lint-staged": { "*.js": "eslint --fix", "*.css": "stylelint --fix" }`,
+        score: 1,
       });
       return;
     }
@@ -36,27 +37,27 @@ export class GitHooksAnalyzer implements Analyzer {
     if (hasHusky && huskyFiles.length === 0) {
       findings.push({
         rule: 'EDS-HOOKS-001',
-        severity: 'MEDIUM',
+        severity: 'LOW',
         category: this.category,
-        description: 'Husky in package.json but no .husky/ directory — hooks not set up',
-        recommendation: 'Run: npx husky install to create .husky/ directory with hook scripts',
-        score: 4,
+        description: 'Husky in package.json but .husky/ directory missing — hooks not active',
+        recommendation: `Run: npx husky install\nThis creates .husky/ directory with hook scripts.`,
+        score: 1,
       });
     }
   }
 
   private checkPreCommitHook(files: ProjectFiles, findings: Finding[]): void {
     if (!files.huskyPreCommit) {
-      // Only warn if husky is present
       const hasHusky = files.all.some((f) => f.path.startsWith('.husky/'));
       if (hasHusky) {
         findings.push({
           rule: 'EDS-HOOKS-002',
-          severity: 'MEDIUM',
+          severity: 'LOW',
           category: this.category,
-          description: 'Husky set up but no pre-commit hook file',
-          recommendation: 'Add .husky/pre-commit: npx lint-staged',
-          score: 4,
+          description: 'Husky installed but no pre-commit hook — hooks doing nothing',
+          file: '.husky/',
+          recommendation: `Add pre-commit hook for staged file linting:\n\n# .husky/pre-commit\nnpx lint-staged`,
+          score: 1,
         });
       }
       return;
@@ -64,16 +65,15 @@ export class GitHooksAnalyzer implements Analyzer {
 
     const content = files.huskyPreCommit.content;
 
-    // Check what runs in pre-commit
     if (!/lint-staged|eslint|stylelint/.test(content)) {
       findings.push({
         rule: 'EDS-HOOKS-002',
-        severity: 'MEDIUM',
+        severity: 'LOW',
         category: this.category,
-        description: 'Pre-commit hook doesn\'t run linting',
+        description: 'Pre-commit hook doesn\'t run linting — not catching issues before commit',
         file: '.husky/pre-commit',
-        recommendation: 'Add "npx lint-staged" to pre-commit hook for staged file linting',
-        score: 4,
+        recommendation: `Add lint-staged to pre-commit:\n\n# .husky/pre-commit\nnpx lint-staged\n\n// package.json:\n"lint-staged": {\n  "*.js": ["eslint --fix"],\n  "*.css": ["stylelint --fix"]\n}`,
+        score: 1,
       });
     }
   }
@@ -81,13 +81,12 @@ export class GitHooksAnalyzer implements Analyzer {
   private checkCommitMsg(files: ProjectFiles, findings: Finding[]): void {
     const commitMsgHook = files.all.find((f) => f.path === '.husky/commit-msg');
     if (!commitMsgHook) {
-      // Informational only
       findings.push({
         rule: 'EDS-HOOKS-003',
         severity: 'LOW',
         category: this.category,
-        description: 'No commit-msg hook — commit message format not enforced',
-        recommendation: 'Add commitlint with conventional-commits preset for consistent messages',
+        description: 'No commit message validation — inconsistent git history',
+        recommendation: `Optional: Add commitlint for consistent messages:\n\nnpm install -D @commitlint/cli @commitlint/config-conventional\n\n// commitlint.config.js:\nmodule.exports = { extends: ['@commitlint/config-conventional'] };\n\n// .husky/commit-msg:\nnpx --no -- commitlint --edit $1`,
         score: 1,
       });
     }

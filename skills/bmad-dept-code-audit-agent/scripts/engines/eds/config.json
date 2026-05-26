@@ -15,6 +15,13 @@
       "LOW": 1
     }
   },
+  "pagespeed": {
+    "enabled": false,
+    "threshold": 90,
+    "maxPages": 5,
+    "strategy": ["mobile", "desktop"],
+    "pages": ["/"]
+  },
   "defaults": {
     "production": true,
     "team": true,
