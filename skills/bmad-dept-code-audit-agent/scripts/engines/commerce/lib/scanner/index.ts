@@ -11,10 +11,11 @@ import { ScannerContextBase } from './context';
 // Scan modules
 import { scanExceptions, scanSecurity, scanDatabase, scanCaching, scanStructure, scanPerformance, scanDeprecated, scanLogging, scanFileStorage, scanReusability } from './scans-code';
 import { scanTests, scanDi, scanPlugins, scanCrons, scanGraphql, scanQueues, scanConfig, scanFrontend, scanXmlConfigs, scanWebapiAcl, scanDbSchema } from './scans-arch';
-import { scanInfrastructure, scanCloudDeployment, scanPhpDeep, scanObservers, scanModuleArch, scanCodeMetrics } from './scans-infra';
+import { scanInfrastructure, scanCloudDeployment, scanPhpDeep, scanObservers, scanModuleArch, scanCodeMetrics, scanCaseSensitivity } from './scans-infra';
 import { scanBusinessLogic, scanBusinessCustomizations, scanCriticalCommerceFlows, scanMsiInventory, scanAdminIntegrationSecurity, scanLogicalFlow } from './scans-business';
 import { scanCodingStandards, scanInputValidation, scanFrontendAssets, scanComposer, scanFpcPrivateContent, scanBackwardCompat, scanConfigScope, scanLayoutUi, scanXsdValidation } from './scans-quality';
 import { parseSqlDump, dbscanTableStructure, dbscanIndexes, dbscanColumns, dbscanForeignKeys, dbscanNaming, dbscanEngines, dbscanCharset, dbscanMagentoSchema, dbscanIntegrity, dbscanPerformance } from './db-analysis';
+import { scanRedisCollision, scanPaymentSandbox, scanCronOverlap, scanSchemaWhitelistDrift, scanQueueConsumerLimits, scanJsMinification, scanComposerLock, scanScdMismatch, scanModuleSequence, scanHardcodedEnvValues, scanAdminSecurityDefaults, scanCspGaps, scanIndexerIssues, scanFilePermissions } from './scans-deploy';
 
 export { Finding, FindingsMap, StatsMap, ScannerOptions, Thresholds, DEFAULT_THRESHOLDS, ScanContext, TableInfo };
 
@@ -75,6 +76,7 @@ export class AdobeCommerceAuditScanner {
     this.runSafe('Observers', () => scanObservers(this.ctx, php, xml, phtml));
     this.runSafe('ModuleArch', () => scanModuleArch(this.ctx, php, xml, phtml));
     this.runSafe('CodeMetrics', () => scanCodeMetrics(this.ctx, php, xml, phtml));
+    this.runSafe('CaseSensitivity', () => scanCaseSensitivity(this.ctx, php, xml, phtml));
 
     // Business scans (28-33)
     this.runSafe('BusinessLogic', () => scanBusinessLogic(this.ctx, php, xml, phtml));
@@ -94,6 +96,22 @@ export class AdobeCommerceAuditScanner {
     this.runSafe('ConfigScope', () => scanConfigScope(this.ctx, php, xml, phtml));
     this.runSafe('LayoutUi', () => scanLayoutUi(this.ctx, php, xml, phtml));
     this.runSafe('XsdValidation', () => scanXsdValidation(this.ctx, php, xml, phtml));
+
+    // Deployment safety scans (43-56)
+    this.runSafe('RedisCollision', () => scanRedisCollision(this.ctx, php, xml, phtml));
+    this.runSafe('PaymentSandbox', () => scanPaymentSandbox(this.ctx, php, xml, phtml));
+    this.runSafe('CronOverlap', () => scanCronOverlap(this.ctx, php, xml, phtml));
+    this.runSafe('SchemaWhitelistDrift', () => scanSchemaWhitelistDrift(this.ctx, php, xml, phtml));
+    this.runSafe('QueueConsumerLimits', () => scanQueueConsumerLimits(this.ctx, php, xml, phtml));
+    this.runSafe('JsMinification', () => scanJsMinification(this.ctx, php, xml, phtml));
+    this.runSafe('ComposerLock', () => scanComposerLock(this.ctx, php, xml, phtml));
+    this.runSafe('ScdMismatch', () => scanScdMismatch(this.ctx, php, xml, phtml));
+    this.runSafe('ModuleSequence', () => scanModuleSequence(this.ctx, php, xml, phtml));
+    this.runSafe('HardcodedEnvValues', () => scanHardcodedEnvValues(this.ctx, php, xml, phtml));
+    this.runSafe('AdminSecurityDefaults', () => scanAdminSecurityDefaults(this.ctx, php, xml, phtml));
+    this.runSafe('CspGaps', () => scanCspGaps(this.ctx, php, xml, phtml));
+    this.runSafe('IndexerIssues', () => scanIndexerIssues(this.ctx, php, xml, phtml));
+    this.runSafe('FilePermissions', () => scanFilePermissions(this.ctx, php, xml, phtml));
 
     // Database analysis (if SQL dump provided)
     if (this.options.sqlDump && fs.existsSync(this.options.sqlDump)) {

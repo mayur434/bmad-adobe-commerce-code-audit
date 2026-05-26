@@ -41,7 +41,7 @@ export class AuditReportGenerator {
       'Dependency Injection', 'Plugin Architecture', 'Cron Jobs',
       'GraphQL', 'Queue Processing', 'Configuration', 'Frontend Templates',
       'XML Configuration', 'WebAPI & ACL', 'DB Schema',
-      'Infrastructure', 'Cloud Deployment', 'PHP Deep Analysis',
+      'Infrastructure', 'Cloud Deployment', 'Case Sensitivity', 'Deployment Safety', 'PHP Deep Analysis',
       'Event Observers', 'Module Architecture', 'Code Metrics',
       'Business Logic Identification', 'Business Customization Review',
       'Critical Commerce Flows', 'MSI Inventory & Source Management',

@@ -1259,3 +1259,756 @@ $uploader->setAllowedExtensions(['pdf', 'doc']);
 #### Related Rules
 - `COMM-SEC-002` (SQL injection — superglobal values often flow to queries)
 - `COMM-SEC-001` (CSRF — bypassing request interface also bypasses CSRF checks)
+
+---
+
+## Deployment Rules
+
+---
+
+### COMM-DEPLOY-001: Filesystem Case Sensitivity Mismatch
+
+- **Severity**: Critical
+- **Description**: PHP's PSR-4 autoloading requires exact case match between namespace segments and directory/file names. Windows and macOS filesystems are case-insensitive, so developers may not notice mismatches. When deployed to Linux (case-sensitive) — including Adobe Commerce Cloud, Docker containers, and CI/CD pipelines — autoloading silently fails, classes are not found, and builds break. Git on Windows also cannot track case-only renames (`Controller/` → `controller/`), causing stale references that persist through multiple deployments and require cache purges or blank deployments to resolve.
+
+#### Detect — Files to Scan
+```
+app/code/**/*.php
+app/code/**/composer.json
+```
+
+#### Detect — Bad Pattern
+- Namespace declaration casing doesn't match directory structure:
+  - `namespace Vendor\Module\controller\Index;` but directory is `Controller/`
+  - `namespace Vendor\Module\Api\Data;` but directory is `api/data/`
+- Class filename doesn't match class name: `class ProductRepository` in file `productrepository.php`
+- composer.json `psr-4` autoload path has different case than actual directory
+- Two directories under the same parent that differ only by case (Git tracking artifact)
+- `use` statements referencing paths with inconsistent casing across files
+
+#### Detect — Good Pattern
+- All namespace segments exactly match directory names: `namespace Vendor\Module\Controller\Index;` → `app/code/Vendor/Module/Controller/Index/`
+- Class name exactly matches filename: `class ProductRepository` → `ProductRepository.php`
+- composer.json PSR-4 paths match filesystem exactly
+- Consistent casing in all `use` import statements across the module
+
+#### Bad Example
+```php
+<?php
+// File: app/code/Vendor/Module/controller/Index/Index.php
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// Directory is lowercase "controller" but namespace is uppercase "Controller"
+
+namespace Vendor\Module\Controller\Index;
+
+use Magento\Framework\App\Action\HttpGetActionInterface;
+
+class Index implements HttpGetActionInterface
+{
+    public function execute()
+    {
+        // This works on Windows/macOS but FAILS on Linux:
+        // PHP Fatal error: Class 'Vendor\Module\Controller\Index\Index' not found
+    }
+}
+```
+
+```json
+// composer.json — path mismatch
+{
+    "autoload": {
+        "psr-4": {
+            "Vendor\\Module\\": "src/"
+        }
+    }
+}
+// But actual directory on disk is "Src/" (uppercase S)
+// Works on Windows, fails on Linux
+```
+
+```
+# Git log showing the problem:
+# Developer renamed folder on Windows but Git didn't track the case change
+$ git ls-files | grep -i controller
+app/code/Vendor/Module/Controller/Index/Index.php    ← Git tracks this
+# But filesystem actually has:
+app/code/Vendor/Module/controller/Index/Index.php    ← lowercase "controller"
+```
+
+#### Good Example
+```php
+<?php
+// File: app/code/Vendor/Module/Controller/Index/Index.php
+// Namespace matches directory path EXACTLY (case-sensitive)
+
+namespace Vendor\Module\Controller\Index;
+
+use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\Controller\ResultFactory;
+
+class Index implements HttpGetActionInterface
+{
+    public function __construct(
+        private readonly ResultFactory $resultFactory
+    ) {}
+
+    public function execute()
+    {
+        return $this->resultFactory->create(ResultFactory::TYPE_PAGE);
+    }
+}
+```
+
+```bash
+# Correct way to fix case on Windows (two-step rename):
+git mv app/code/Vendor/Module/controller app/code/Vendor/Module/Controller_tmp
+git mv app/code/Vendor/Module/Controller_tmp app/code/Vendor/Module/Controller
+git commit -m "Fix: directory case to match PSR-4 namespace (Linux deployment fix)"
+```
+
+#### LLM Deep Analysis — What to Look For
+
+When performing semantic analysis, go beyond regex and check:
+
+1. **Cross-file consistency**: Are `use` statements in other files referencing this namespace with consistent casing? If `FileA.php` uses `use Vendor\Module\Controller\Index\Index;` but the actual directory is lowercase, flag it.
+
+2. **registration.php alignment**: Does `ComponentRegistrar::register(ComponentRegistrar::MODULE, 'Vendor_Module', __DIR__)` resolve to a path where all subsequent directories match their namespace declarations?
+
+3. **di.xml / webapi.xml / routes.xml references**: XML config files referencing class names — do the referenced paths exist with exact casing?
+
+4. **Deployment config signals**: If `.magento.app.yaml` or Docker configs indicate Linux deployment target, escalate all case findings to CRITICAL.
+
+5. **Git history signals**: If you see both `Controller/` and `controller/` referenced in different files, this is a strong signal of the Windows Git case-tracking bug.
+
+6. **Stale autoload maps**: `composer.json` autoload-dev or classmap entries pointing to paths with wrong case — these survive `composer dump-autoload` on Windows but fail on Linux.
+
+#### Remediation
+
+1. **Identify**: Run `git ls-files | sort -f | uniq -Di` to find files that differ only by case
+2. **Fix on macOS/Linux** (or WSL): `git mv OldCase CorrectCase` works directly on case-sensitive FS
+3. **Fix on Windows**: Two-step — `git mv Dir tmp_dir && git mv tmp_dir CorrectDir`
+4. **Prevent**: Add `core.ignorecase = false` to `.gitattributes` or team `.gitconfig`
+5. **CI guard**: Add a CI step that runs `git ls-files | sort -f | uniq -Di` and fails if duplicates found
+6. **Post-incident**: Clear all server-side caches (`bin/magento cache:flush`, OPcache reset, Redis flush) and run `composer dump-autoload` on the deployment target
+
+#### False Positives
+- `vendor/` directory (third-party code managed by Composer — not your responsibility)
+- `generated/` directory (auto-generated, case is always correct)
+- `dev/tests/` directories (test infrastructure, not deployed)
+- Files with `@codingStandardsIgnoreFile` annotation (intentionally excluded)
+
+#### Related Rules
+- `COMM-ARCH-004` (Missing module dependencies — related autoload issue)
+- `COMM-STD-001` (Strict types — code quality that often accompanies case issues)
+
+#### References
+- https://www.php-fig.org/psr/psr-4/
+- https://experienceleague.adobe.com/docs/commerce-cloud-service/user-guide/develop/overview.html
+- https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreignoreCase
+
+---
+
+### COMM-DEPLOY-002: Redis Prefix/Database Collision
+
+- **Severity**: Critical
+- **Description**: When multiple environments (dev, staging, production) share the same Redis instance without unique prefixes or database numbers, a `cache:flush` in one environment wipes data from all environments. Session data loss causes mass logouts; cache loss causes performance degradation during rebuild.
+
+#### Detect — Files to Scan
+```
+app/etc/env.php
+.magento.env.yaml
+```
+
+#### Detect — Bad Pattern
+- Redis cache config without `id_prefix` or `prefix` key
+- Same Redis `database` number used for cache AND sessions
+- No `CACHE_ID_PREFIX` in Cloud environment config
+- Redis connection without hostname differentiation between environments
+- Session Redis config without prefix (all environments write to same keys)
+
+#### Detect — Good Pattern
+```php
+'cache' => [
+    'frontend' => [
+        'default' => [
+            'id_prefix' => 'prod_',  // Unique per environment
+            'backend' => 'Magento\\Framework\\Cache\\Backend\\Redis',
+            'backend_options' => [
+                'server' => '${REDIS_HOST}',  // From env var
+                'database' => '0',  // Cache = db 0
+            ],
+        ],
+        'page_cache' => [
+            'id_prefix' => 'prod_fpc_',
+            'backend_options' => [
+                'database' => '1',  // FPC = db 1
+            ],
+        ],
+    ],
+],
+'session' => [
+    'redis' => [
+        'database' => '2',  // Sessions = db 2 (separate!)
+        'prefix' => 'prod_sess_',
+    ],
+],
+```
+
+#### LLM Deep Analysis
+- Cross-reference env.php Redis database numbers — are cache, FPC, and sessions on different databases?
+- Check if Redis host comes from environment variable or is hardcoded (shared across envs?)
+- Look for any shared infrastructure pattern where dev/staging connect to prod Redis
+
+#### Remediation
+1. Assign unique `id_prefix` per environment: `dev_`, `stg_`, `prod_`
+2. Use separate Redis database numbers: cache=0, FPC=1, sessions=2
+3. Ideally use separate Redis instances per environment
+4. On Cloud: set `CACHE_ID_PREFIX` in environment-specific variables
+
+---
+
+### COMM-DEPLOY-003: Payment Gateway Sandbox Mode
+
+- **Severity**: Critical
+- **Description**: Payment modules configured in sandbox/test mode that get deployed to production. Orders appear successful but no actual charges occur, or test credentials process real cards in sandbox resulting in no actual payment capture.
+
+#### Detect — Files to Scan
+```
+app/etc/env.php
+app/etc/config.php
+app/code/**/etc/system.xml
+app/code/**/etc/config.xml
+```
+
+#### Detect — Bad Pattern
+- `'sandbox' => 1` or `'test_mode' => true` in env.php/config.php
+- Payment system.xml with `<default>1</default>` for sandbox/test fields
+- Hardcoded sandbox API URLs (sandbox.paypal.com, apitest.authorize.net)
+- Test API keys committed in config (sk_test_, pk_test_ for Stripe)
+- config.php containing payment mode values (deployed to all environments)
+
+#### Detect — Good Pattern
+- Payment mode configured ONLY via admin panel (stored in core_config_data, not files)
+- Sandbox flags sourced from environment variables
+- CI/CD that verifies payment is in live mode before production deploy
+- Separate payment credentials per environment via Cloud variables
+
+#### LLM Deep Analysis
+- Trace payment configuration: where do mode/credentials come from? If from committed files, flag.
+- Check if there's a deploy script that sets payment to live mode (fragile — can be missed)
+- Look for payment test account references (test@test.com, 4111111111111111) in any PHP/config
+
+#### Remediation
+1. Remove all payment mode settings from config.php (it's deployed everywhere)
+2. Set payment mode ONLY via environment-specific config (Cloud variables or env.php per server)
+3. Add CI gate that checks `config.php` doesn't contain payment sandbox settings
+4. Use environment variables for all payment API keys/credentials
+
+---
+
+### COMM-DEPLOY-004: Cron Overlap Without Lock Mechanism
+
+- **Severity**: Critical
+- **Description**: Cron jobs that run without acquiring a lock can execute concurrently if the previous run hasn't finished when the next schedule triggers. This causes duplicate order processing, double email sends, race conditions on shared data, and inventory corruption.
+
+#### Detect — Files to Scan
+```
+app/code/**/etc/crontab.xml
+app/code/**/Cron/*.php
+app/code/**/*Cron*.php
+```
+
+#### Detect — Bad Pattern
+- Cron class without LockInterface/LockManager injection
+- No `lock->acquire()` or `FlagManager` usage in cron execute method
+- Frequent schedule (*/1, */5) without any overlap protection
+- Multiple crons on same schedule without staggering
+
+#### Detect — Good Pattern
+```php
+class ProcessOrders
+{
+    public function __construct(
+        private readonly LockManagerInterface $lockManager,
+        private readonly LoggerInterface $logger
+    ) {}
+
+    public function execute(): void
+    {
+        if (!$this->lockManager->lock('custom_process_orders', 0)) {
+            $this->logger->info('ProcessOrders already running, skipping.');
+            return;
+        }
+        try {
+            // Process orders...
+        } finally {
+            $this->lockManager->unlock('custom_process_orders');
+        }
+    }
+}
+```
+
+#### LLM Deep Analysis
+- For each cron job, trace the execute() method — does it modify shared state (orders, inventory, customer data)?
+- If yes but no lock, how long does it typically run? Compare against schedule frequency.
+- Check for database transactions around critical operations (partial protection but not overlap protection)
+- Look for "already running" log messages that indicate devs were aware but didn't fix properly
+
+#### Remediation
+1. Inject `\Magento\Framework\Lock\LockManagerInterface`
+2. Acquire named lock at start of execute() with timeout=0 (non-blocking)
+3. Return early if lock not acquired (another instance is running)
+4. Release lock in `finally` block
+5. For simpler cases, use `\Magento\Framework\FlagManager` with timestamp check
+
+---
+
+### COMM-DEPLOY-005: db_schema_whitelist.json Drift
+
+- **Severity**: Critical
+- **Description**: Magento's declarative schema requires `db_schema_whitelist.json` to contain all tables/columns/indexes/constraints from `db_schema.xml`. If the whitelist is missing or out of sync, `setup:upgrade` on existing installations silently skips creating new columns/tables — data structure is incomplete but no error is thrown.
+
+#### Detect — Files to Scan
+```
+app/code/**/etc/db_schema.xml
+app/code/**/etc/db_schema_whitelist.json
+```
+
+#### Detect — Bad Pattern
+- `db_schema.xml` exists but `db_schema_whitelist.json` is missing entirely
+- Whitelist JSON is malformed/empty
+- Tables in db_schema.xml not present in whitelist
+- New columns added to db_schema.xml but whitelist not regenerated
+- Whitelist has tables/columns that no longer exist in schema (stale entries — less critical)
+
+#### Detect — Good Pattern
+- Every table in db_schema.xml has corresponding entry in whitelist
+- Every column, index, and constraint is listed
+- Whitelist generated via: `bin/magento setup:db-declaration:generate-whitelist`
+
+#### LLM Deep Analysis
+- Parse both files and diff: are all declared entities in the whitelist?
+- Check git history: was db_schema.xml modified more recently than whitelist? (drift indicator)
+- Look for manual whitelist edits (risky — should always be auto-generated)
+
+#### Remediation
+1. Run: `bin/magento setup:db-declaration:generate-whitelist --module-name=Vendor_Module`
+2. Commit the updated whitelist
+3. Add to CI: verify whitelist is up-to-date before merge
+4. Never manually edit db_schema_whitelist.json
+
+---
+
+### COMM-DEPLOY-006: Queue Consumer Without Memory/Message Limits
+
+- **Severity**: High
+- **Description**: Queue consumers (RabbitMQ/DB queue) running without `maxMessages` limit become long-running processes that accumulate memory from entity manager tracking, uncollected objects, and event subscriber state. In production with high message volume, they OOM-kill within hours.
+
+#### Detect — Files to Scan
+```
+app/code/**/etc/queue_consumer.xml
+app/code/**/Consumer/*.php
+.magento.env.yaml
+```
+
+#### Detect — Bad Pattern
+- `<consumer>` without `maxMessages` attribute
+- Consumer PHP class without `memory_get_usage()` monitoring
+- No `gc_collect_cycles()` after batch processing
+- Missing `CONSUMERS_WAIT_FOR_MAX_MESSAGES` in Cloud config
+- Consumer that processes indefinitely without entity manager clear
+
+#### Detect — Good Pattern
+```xml
+<consumer name="async.operations.all" queue="async.operations.all"
+          maxMessages="1000" handler="..."/>
+```
+```php
+// In consumer class
+if (memory_get_usage(true) > $this->memoryLimit) {
+    $this->logger->info('Memory limit reached, restarting consumer.');
+    return;
+}
+$this->entityManager->clear(); // Prevent memory leak from tracked entities
+gc_collect_cycles();
+```
+
+#### LLM Deep Analysis
+- Check if consumer processes contain entity loading (getById, getList) without clearing EM
+- Look for event dispatching in loops (each dispatch accumulates subscriber memory)
+- Verify if the queue processes financial data (orders, payments) — higher risk if consumer crashes mid-batch
+
+---
+
+### COMM-DEPLOY-007: JavaScript Minification Breakage
+
+- **Severity**: High
+- **Description**: Custom JavaScript that works in developer mode (unminified) but breaks when Magento's built-in minifier/bundler runs in production. Common causes: missing AMD define() wrapper, missing semicolons causing ASI failures when lines merge, ES6+ syntax without transpilation.
+
+#### Detect — Files to Scan
+```
+app/code/**/view/frontend/web/js/**/*.js
+app/code/**/view/adminhtml/web/js/**/*.js
+app/design/**/web/js/**/*.js
+```
+
+#### Detect — Bad Pattern
+- JS file > 100 bytes without `define()` or `require()` wrapper
+- Lines ending without semicolons before `(` or `[` on next line (ASI hazard)
+- ES6+ syntax (arrow functions, const/let, template literals) without babel/webpack config
+- `'use strict'` at file level instead of inside define() (leaks to other bundled files)
+- IIFE without leading semicolon: `(function(){})()` — merges with previous file in bundle
+
+#### Detect — Good Pattern
+```javascript
+define([
+    'jquery',
+    'mage/translate'
+], function ($, $t) {
+    'use strict';
+
+    return function (config, element) {
+        // Module code here
+    };
+});
+```
+
+#### LLM Deep Analysis
+- Check requirejs-config.js: are all custom JS modules properly mapped?
+- Look for JS that modifies global scope (window.X = ...) — works standalone, conflicts when bundled
+- Check for dynamic imports that bypass RequireJS (fetch scripts directly)
+- Verify mixins follow the return pattern: `return function(target) { ... }`
+
+---
+
+### COMM-DEPLOY-008: Missing composer.lock
+
+- **Severity**: Critical
+- **Description**: Without composer.lock committed, `composer install` resolves to latest compatible versions at deploy time. Different builds get different package versions — patches, bugfixes, or breaking minor versions can silently change between deployments.
+
+#### Detect — Files to Scan
+```
+composer.json
+composer.lock
+.gitignore
+```
+
+#### Detect — Bad Pattern
+- `composer.json` exists but `composer.lock` is missing from repo
+- `composer.lock` listed in `.gitignore`
+- CI/CD pipeline running `composer update` instead of `composer install`
+
+#### Detect — Good Pattern
+- `composer.lock` committed alongside `composer.json`
+- CI runs `composer install --no-dev` (uses lock file)
+- Lock file updated intentionally via `composer update` then committed
+
+#### Remediation
+1. Remove `composer.lock` from `.gitignore`
+2. Run `composer install` locally
+3. Commit `composer.lock`
+4. CI/CD must use `composer install` (not `update`)
+
+---
+
+### COMM-DEPLOY-009: SCD Locale/Theme Mismatch
+
+- **Severity**: Critical
+- **Description**: Static Content Deployment (SCD) only generates assets for configured locales and themes. If production has multiple storefronts with different locales but SCD config only covers one, other stores get 404 for all CSS/JS/images — completely broken frontend.
+
+#### Detect — Files to Scan
+```
+app/etc/config.php
+.magento.env.yaml
+app/design/**/theme.xml
+app/design/**/registration.php
+```
+
+#### Detect — Bad Pattern
+- Multiple locales in config.php but no SCD_MATRIX in deployment config
+- SKIP_SCD enabled (debugging leftover)
+- Theme has theme.xml but missing registration.php (won't deploy)
+- SCD_STRATEGY not set (defaults to slowest — not a breakage but causes timeout on large sites)
+
+#### Detect — Good Pattern
+```yaml
+# .magento.env.yaml
+stage:
+  build:
+    SCD_MATRIX:
+      "magento/backend":
+        language:
+          - en_US
+      "Vendor/theme":
+        language:
+          - en_US
+          - fr_FR
+          - de_DE
+```
+
+#### LLM Deep Analysis
+- Count unique locales in config.php → verify SCD will cover them all
+- Check if any store view uses a locale not in deployment config
+- Verify all registered themes have both theme.xml AND registration.php
+- Look for hard-to-spot issue: parent theme exists but child theme overrides aren't in SCD scope
+
+---
+
+### COMM-DEPLOY-010: Incorrect module.xml Sequence
+
+- **Severity**: High
+- **Description**: The `<sequence>` element in module.xml controls module load order. If a module uses plugins/preferences/events on another module but doesn't declare it as a sequence dependency, the load order is undefined — it may work in one environment but fail in another due to different filesystem ordering.
+
+#### Detect — Files to Scan
+```
+app/code/**/etc/module.xml
+app/code/**/etc/di.xml
+app/code/**/etc/events.xml
+```
+
+#### Detect — Bad Pattern
+- Module plugins/observers on Magento_Sales/Checkout/Payment without declaring them in sequence
+- Circular sequence dependencies (A depends on B, B depends on A)
+- Module with preferences for core interfaces but no sequence on the module providing the interface
+- Empty `<sequence/>` on modules that clearly extend core (have di.xml preferences/plugins)
+
+#### Detect — Good Pattern
+```xml
+<module name="Vendor_Payment" setup_version="1.0.0">
+    <sequence>
+        <module name="Magento_Payment"/>
+        <module name="Magento_Sales"/>
+        <module name="Magento_Checkout"/>
+    </sequence>
+</module>
+```
+
+#### LLM Deep Analysis
+- For each module, check di.xml plugins/preferences — what modules do they target?
+- Verify those target modules appear in `<sequence>`
+- Check events.xml — if observing core events, the module dispatching them should be in sequence
+- Detect circular deps: A→B→C→A chains
+
+---
+
+### COMM-DEPLOY-011: Hardcoded Environment Values
+
+- **Severity**: Critical
+- **Description**: Base URLs, API endpoints, database credentials, service URLs hardcoded in PHP or XML config files instead of sourced from env.php or environment variables. Works in the environment where it was developed, breaks (or worse, exposes secrets) everywhere else.
+
+#### Detect — Files to Scan
+```
+app/code/**/*.php
+app/code/**/etc/*.xml
+!app/code/**/Test/**
+```
+
+#### Detect — Bad Pattern
+- Hardcoded production/staging URLs in PHP (not example.com)
+- API keys in source code (sk_live_, AKIA*, etc.)
+- Database connection strings in PHP files
+- SMTP server addresses hardcoded
+- Redis/Elasticsearch URLs hardcoded
+- `password = 'actualvalue'` patterns
+
+#### Detect — Good Pattern
+```php
+// Values from deployment config
+$baseUrl = $this->deploymentConfig->get('web/unsecure/base_url');
+$apiKey = $this->scopeConfig->getValue('payment/stripe/api_key');
+$redisHost = getenv('REDIS_HOST') ?: 'localhost';
+```
+
+#### LLM Deep Analysis
+- Trace API key usage: where does the value originate? If from a PHP constant or hardcoded string, flag.
+- Check env.php itself: does it contain production values committed to repo? (env.php should be in .gitignore)
+- Look for configuration patterns where value should come from admin config but is bypassed with hardcoded value
+
+---
+
+### COMM-DEPLOY-012: Admin Security Defaults
+
+- **Severity**: Critical
+- **Description**: Default admin path (/admin) combined with disabled 2FA creates a trivially exploitable attack surface. Bots continuously scan for /admin — if found, they brute-force credentials. Without 2FA, a compromised password means full admin access.
+
+#### Detect — Files to Scan
+```
+app/etc/env.php
+app/etc/config.php
+```
+
+#### Detect — Bad Pattern
+- `'frontName' => 'admin'` (or other common paths: backend, admin123, administrator)
+- `'Magento_TwoFactorAuth' => 0` in config.php
+- Security modules disabled (ReCaptcha, AdminAdobeIms)
+- Admin session lifetime > 86400 seconds (24h)
+- No admin account lockout configured
+
+#### Detect — Good Pattern
+- Unique, non-guessable admin path
+- 2FA enabled for all admin users
+- ReCaptcha enabled on admin login
+- Session lifetime ≤ 3600 seconds
+- Account lockout after failed attempts configured
+
+#### LLM Deep Analysis
+- Check if there's any IP restriction for admin (via .htaccess, nginx, or Cloud access control)
+- Verify if admin URL is exposed in any frontend HTML/JS (occasionally leaked in source)
+- Check if there's a monitoring/alerting on failed admin login attempts
+
+#### Remediation
+1. Change admin path: update `frontName` in env.php
+2. Enable 2FA: `bin/magento module:enable Magento_TwoFactorAuth`
+3. Configure ReCaptcha for admin login
+4. Set session lifetime to 3600 seconds
+5. Enable account lockout (5 attempts, 30 min lockout)
+
+---
+
+### COMM-DEPLOY-013: CSP Whitelist Gaps
+
+- **Severity**: High
+- **Description**: Magento enforces Content Security Policy headers. Third-party scripts (analytics, payment iframes, chat widgets, CDNs) not listed in csp_whitelist.xml are blocked in production. Works in dev because CSP is in report-only mode, but enforce mode in production blocks the resources.
+
+#### Detect — Files to Scan
+```
+app/code/**/etc/csp_whitelist.xml
+app/code/**/view/**/*.phtml
+app/code/**/view/**/web/js/**/*.js
+app/design/**/*.phtml
+```
+
+#### Detect — Bad Pattern
+- External script/iframe/img sources in PHTML without matching CSP whitelist entry
+- Dynamic script loading in JS (createElement('script').src = external) without CSP coverage
+- No csp_whitelist.xml exists at all but templates reference external domains
+- Payment iframes (Stripe, Braintree, PayPal) without frame-src whitelist
+
+#### Detect — Good Pattern
+```xml
+<!-- etc/csp_whitelist.xml -->
+<csp_whitelist>
+    <policies>
+        <policy id="script-src">
+            <values>
+                <value id="google-analytics" type="host">*.google-analytics.com</value>
+                <value id="gtm" type="host">*.googletagmanager.com</value>
+            </values>
+        </policy>
+        <policy id="frame-src">
+            <values>
+                <value id="stripe" type="host">*.stripe.com</value>
+                <value id="paypal" type="host">*.paypal.com</value>
+            </values>
+        </policy>
+    </policies>
+</csp_whitelist>
+```
+
+#### LLM Deep Analysis
+- Inventory all external domains referenced in PHTML templates and JS files
+- Cross-reference against csp_whitelist.xml entries
+- Check for `report-uri` CSP directive (indicates team is monitoring but may not be enforcing)
+- Payment module integration: does it load iframes that need frame-src?
+
+---
+
+### COMM-DEPLOY-014: Indexer Dependency Chain Issues
+
+- **Severity**: High
+- **Description**: Custom indexers without proper `<dependency>` declarations execute in undefined order. In "Update on Save" mode, this means a custom indexer might fire before the catalog indexer finishes — producing incomplete search results or price data. Missing mview.xml means "Update on Schedule" silently doesn't work.
+
+#### Detect — Files to Scan
+```
+app/code/**/etc/indexer.xml
+app/code/**/etc/mview.xml
+app/etc/env.php
+```
+
+#### Detect — Bad Pattern
+- Custom indexer with no `<dependency>` elements (execution order undefined)
+- indexer.xml has `view_id` but no matching mview.xml (scheduled mode broken)
+- Many indexers set to "realtime" mode (causes admin timeouts on bulk operations)
+- Custom indexer that depends on catalog data but doesn't declare catalog indexer dependency
+
+#### Detect — Good Pattern
+```xml
+<!-- indexer.xml -->
+<indexer id="custom_product_flat" view_id="custom_product_flat"
+         class="Vendor\Module\Indexer\ProductFlat">
+    <title>Custom Product Flat</title>
+    <dependency id="catalog_product_attribute"/>
+    <dependency id="catalog_product_price"/>
+</indexer>
+```
+```xml
+<!-- mview.xml -->
+<view id="custom_product_flat">
+    <subscriptions>
+        <table name="catalog_product_entity" entity_column="entity_id"/>
+        <table name="catalog_product_entity_int" entity_column="entity_id"/>
+    </subscriptions>
+</view>
+```
+
+#### LLM Deep Analysis
+- Trace what data the custom indexer reads — does it read from tables that other indexers populate?
+- If yes, those indexers must be in `<dependency>`
+- Check if indexer is registered for "Update on Schedule" but has no mview.xml subscriptions (no-op)
+- Review if `indexer:reindex` is called in deploy hooks (order matters there too)
+
+---
+
+### COMM-DEPLOY-015: File Permission Patterns
+
+- **Severity**: High
+- **Description**: Incorrect file/directory permissions that work in development (running as root or with permissive umask) but fail in production where the web server runs as www-data/nginx user. Also: chmod 777 in deploy scripts creating security vulnerabilities.
+
+#### Detect — Files to Scan
+```
+deploy.sh
+bin/deploy.sh
+.github/workflows/*.yml
+.gitlab-ci.yml
+Makefile
+Dockerfile
+docker/*/Dockerfile
+.magento.app.yaml
+bitbucket-pipelines.yml
+```
+
+#### Detect — Bad Pattern
+- `chmod 777` anywhere in deployment scripts
+- `chmod -R` on project root (overwrites necessary permission differences)
+- `sudo` without `-u www-data` (creates root-owned files)
+- Dockerfile without `USER` directive (runs as root)
+- `app/etc` in writable mounts on Cloud (security risk)
+- No `find -type f/d` distinction in permission setting
+
+#### Detect — Good Pattern
+```bash
+# Correct permission setting
+find var generated pub/static pub/media -type f -exec chmod 664 {} \;
+find var generated pub/static pub/media -type d -exec chmod 775 {} \;
+chmod u+x bin/magento
+chown -R www-data:www-data var generated pub/static pub/media
+```
+```dockerfile
+# Dockerfile with proper user
+RUN useradd -m -s /bin/bash appuser
+USER appuser
+```
+
+#### LLM Deep Analysis
+- Check deployment pipeline: what user does the build/deploy run as?
+- After deploy, will the web server user (www-data) have read access to all files?
+- Will var/, generated/, pub/static/ be writable by the web server?
+- Are sensitive files (env.php) protected from world-read (should be 640)?
+
+#### Remediation
+1. Never use chmod 777
+2. Files: 644 (owner rw, group/other r)
+3. Directories: 755 (owner rwx, group/other rx)
+4. var/generated/pub/static/pub/media: 775 (group writable)
+5. app/etc/env.php: 640 (no other access)
+6. Set proper ownership: `chown -R <deploy-user>:<web-group> .`

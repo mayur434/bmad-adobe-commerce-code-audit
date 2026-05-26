@@ -437,3 +437,139 @@ export function scanCodeMetrics(ctx: ScanContext, php: string[], xml: string[], 
     }
   }
 }
+
+// ==================== 28. PSR-4 CASE SENSITIVITY (Deployment Safety) ====================
+
+/**
+ * Detects filesystem case-sensitivity issues that break Linux/Cloud deployments.
+ *
+ * Problem: Windows/macOS (case-insensitive) allows `Controller/` and `controller/`
+ * to coexist as the "same" directory. Git on these OS doesn't track case-only renames.
+ * When deployed to Linux (case-sensitive), PSR-4 autoload fails → broken builds.
+ *
+ * Checks:
+ *  1. PHP namespace vs. actual directory path case mismatch
+ *  2. Duplicate directory entries differing only by case (Git tracking issue)
+ *  3. composer.json PSR-4 autoload path vs. actual filesystem casing
+ */
+export function scanCaseSensitivity(ctx: ScanContext, php: string[], xml: string[], phtml: string[]): void {
+  if (!ctx.appCode || !fs.existsSync(ctx.appCode)) return;
+
+  const CAT = 'Case Sensitivity';
+
+  // ─── Check 1: Namespace ↔ Directory path mismatch ───────────────────────
+  for (const f of php) {
+    const content = ctx.read(f);
+    if (!content) continue;
+
+    const nsMatch = content.match(/^namespace\s+([^;]+);/m);
+    if (!nsMatch) continue;
+
+    const namespace = nsMatch[1].trim();
+    const nsParts = namespace.split('\\');
+
+    // Get the actual filesystem path segments relative to app/code
+    const relPath = path.relative(ctx.appCode!, path.dirname(f));
+    const pathParts = relPath.split(path.sep);
+
+    // Compare each segment — PSR-4 requires exact case match
+    // Skip first two parts (Vendor/Module) since they define the namespace root
+    if (nsParts.length > 2 && pathParts.length > 2) {
+      for (let i = 2; i < Math.min(nsParts.length, pathParts.length); i++) {
+        if (nsParts[i] !== pathParts[i] && nsParts[i].toLowerCase() === pathParts[i].toLowerCase()) {
+          const mod = ctx.module(f);
+          ctx.add(CAT, mod, f, 1,
+            `PSR-4 Case Mismatch: ${pathParts[i]}`,
+            `Namespace declares "${nsParts[i]}" but directory is "${pathParts[i]}" — case mismatch breaks Linux autoloading`,
+            `namespace ${namespace};\nActual path: ${relPath}`,
+            'CRITICAL',
+            `Rename directory to match namespace exactly: "${nsParts[i]}". ` +
+            `On Windows, use: git mv ${pathParts[i]} ${pathParts[i]}_tmp && git mv ${pathParts[i]}_tmp ${nsParts[i]}`,
+            'Low');
+          break; // One finding per file is enough
+        }
+      }
+    }
+  }
+
+  // ─── Check 2: Duplicate directories differing only by case ──────────────
+  if (ctx.appCode) {
+    const caseMap: Record<string, string[]> = {};
+
+    function walkForDuplicates(dir: string, depth: number): void {
+      if (depth > 8) return;
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch { return; }
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name === 'node_modules' || entry.name === 'vendor' || entry.name.startsWith('.')) continue;
+
+        const fullPath = path.join(dir, entry.name);
+        const lowerKey = path.join(dir, entry.name.toLowerCase());
+
+        if (!caseMap[lowerKey]) caseMap[lowerKey] = [];
+        caseMap[lowerKey].push(fullPath);
+
+        walkForDuplicates(fullPath, depth + 1);
+      }
+    }
+
+    walkForDuplicates(ctx.appCode, 0);
+
+    for (const [, paths] of Object.entries(caseMap)) {
+      if (paths.length > 1) {
+        const names = paths.map((p) => path.basename(p));
+        ctx.add(CAT, 'ALL', paths[0], 0,
+          `Duplicate Directory (Case Only): ${names.join(' vs ')}`,
+          `Directories "${names.join('" and "')}" exist and differ only by case — ` +
+          `Git on Windows/macOS cannot track both. Causes broken builds on Linux.`,
+          `Paths:\n${paths.map((p) => ctx.rel(p)).join('\n')}`,
+          'CRITICAL',
+          'Remove the incorrect-case directory. Use two-step git mv to fix: ' +
+          'git mv Dir dir_tmp && git mv dir_tmp CorrectDir. ' +
+          'Then clear server-side cache and redeploy.', 'Low');
+      }
+    }
+  }
+
+  // ─── Check 3: composer.json autoload path vs. filesystem ────────────────
+  if (ctx.appCode) {
+    const moduleComposers = fg.sync(path.join(ctx.appCode, '**/composer.json').replace(/\\/g, '/'));
+    for (const mc of moduleComposers) {
+      try {
+        const mcData = JSON.parse(fs.readFileSync(mc, 'utf-8'));
+        const psr4 = mcData?.autoload?.['psr-4'];
+        if (!psr4) continue;
+
+        const mcDir = path.dirname(mc);
+        for (const [nsPrefix, relDir] of Object.entries(psr4) as [string, string][]) {
+          const declaredPath = path.join(mcDir, relDir);
+          if (!fs.existsSync(declaredPath)) continue;
+
+          // Check if the declared path segments match actual filesystem case
+          const actualEntries = fs.readdirSync(path.dirname(declaredPath));
+          const declaredBasename = path.basename(declaredPath);
+          const actualMatch = actualEntries.find(
+            (e) => e.toLowerCase() === declaredBasename.toLowerCase() && e !== declaredBasename
+          );
+
+          if (actualMatch) {
+            const mod = ctx.module(mc);
+            ctx.add(CAT, mod, mc, 1,
+              `Autoload Path Case Mismatch: ${declaredBasename}`,
+              `composer.json declares PSR-4 path "${relDir}" but filesystem has "${actualMatch}" — ` +
+              `autoloading fails on case-sensitive systems (Linux, Cloud)`,
+              `PSR-4: "${nsPrefix}" → "${relDir}"\nActual: ${actualMatch}`,
+              'CRITICAL',
+              'Fix the directory name to match composer.json exactly. ' +
+              'Use: git mv ' + actualMatch + ' tmp_fix && git mv tmp_fix ' + declaredBasename,
+              'Low');
+          }
+        }
+      } catch { /* skip malformed */ }
+    }
+  }
+}
