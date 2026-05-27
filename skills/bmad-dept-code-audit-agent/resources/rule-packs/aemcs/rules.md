@@ -911,6 +911,222 @@ app.js
 
 ---
 
+### AEMCS-PERF-005: Missing `allowProxy` on Client Libraries
+
+- **Severity**: High
+- **Description**: Client libraries under `/apps` must declare `allowProxy="{Boolean}true"` to be served through the `/etc.clientlibs` Dispatcher-safe proxy path. Cloud Service's Dispatcher blocks all direct `/apps` requests; without `allowProxy`, clientlibs return 404 in production even though they load fine on the local SDK.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**/.content.xml
+ui.apps/src/main/content/jcr_root/apps/**/clientlib*/**/.content.xml
+```
+
+#### Detect — Bad Pattern
+```regex
+jcr:primaryType\s*=\s*["']cq:ClientLibraryFolder["'](?![\s\S]{0,200}allowProxy)
+```
+- `.content.xml` with `jcr:primaryType="cq:ClientLibraryFolder"` missing `allowProxy="{Boolean}true"`
+
+#### Detect — Good Pattern
+- Every `cq:ClientLibraryFolder` node under `/apps` has `allowProxy="{Boolean}true"`
+- Page templates reference clientlibs via `/etc.clientlibs/` URLs (not `/apps/`)
+
+#### Bad Example
+```xml
+<!-- ui.apps/.../clientlibs/mysite/.content.xml — will 404 in production -->
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    jcr:primaryType="cq:ClientLibraryFolder"
+    categories="[mysite.base]"
+    dependencies="[granite.jquery]"/>
+```
+
+#### Good Example
+```xml
+<!-- allowProxy routes requests through /etc.clientlibs/ — safe through Dispatcher -->
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    jcr:primaryType="cq:ClientLibraryFolder"
+    allowProxy="{Boolean}true"
+    categories="[mysite.base]"
+    dependencies="[granite.jquery]"/>
+```
+
+#### False Positives
+- Clientlibs under `/etc/clientlibs/` (not under `/apps` — no proxy needed)
+- Authoring-only clientlibs loaded in edit context inside the AEM UI (not served through Dispatcher to end users)
+
+#### Related Rules
+- `AEMCS-PERF-004` (clientlib size — pair with allowProxy check when reviewing clientlibs)
+- `AEMCS-SEC-002` (Dispatcher rules — `/etc.clientlibs/*` allow rule must be present)
+
+---
+
+### AEMCS-PERF-006: Render-Blocking Client Library Loading
+
+- **Severity**: Medium
+- **Description**: JavaScript clientlibs included in the `<head>` without `defer` or `async` block HTML parsing and delay First Contentful Paint (FCP). Cloud Service measures Core Web Vitals; render-blocking resources directly lower Lighthouse scores and affect CDN caching strategy signals.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/page/**/*.html
+ui.apps/src/main/content/jcr_root/apps/**/components/structure/**/*.html
+ui.frontend/src/**/*.html
+```
+
+#### Detect — Bad Pattern
+```regex
+data-sly-call.*clientlib\.js.*categories.*(?!loading\s*=\s*['"]defer|async['"])
+```
+- `data-sly-call="${clientlib.js @ categories='...'}"` inside `<head>` without `loading='defer'`
+- `<script src="...">` (non-module, no defer/async) in page component head HTL
+- `clientlib.all` loaded in `<head>` without a deferred loading strategy
+
+#### Detect — Good Pattern
+- JS clientlibs loaded with `loading='defer'` or placed immediately before `</body>`
+- Critical CSS inlined only for above-the-fold styles; remaining CSS loaded asynchronously
+- `<link rel="preload">` for key resources combined with deferred full load
+
+#### Bad Example
+```html
+<!-- page/customheaderlibs.html — render-blocking JS in <head> -->
+<head>
+    <sly data-sly-call="${clientlib.css @ categories='mysite.all'}"/>
+    <sly data-sly-call="${clientlib.js  @ categories='mysite.all'}"/>
+    <!-- JS blocks parsing of everything after it -->
+</head>
+```
+
+#### Good Example
+```html
+<!-- CSS in <head> (render-critical), JS deferred -->
+<head>
+    <sly data-sly-call="${clientlib.css @ categories='mysite.all'}"/>
+</head>
+<body>
+    <!-- page content -->
+    <sly data-sly-call="${clientlib.js @ categories='mysite.all', loading='defer'}"/>
+</body>
+```
+
+#### False Positives
+- Small inline scripts that set global config vars before DOM parse (must be genuinely tiny and justified)
+- Third-party tag manager snippets that contractually require synchronous `<head>` loading
+
+#### Related Rules
+- `AEMCS-PERF-004` (clientlib size — large bundles make render-blocking worse)
+- `AEMCS-PERF-007` (inline scripts — related anti-pattern)
+
+---
+
+### AEMCS-PERF-007: Inline Scripts and Styles in HTL Components
+
+- **Severity**: Medium
+- **Description**: `<style>` blocks and `<script>` blocks embedded directly in HTL component markup are not cached by the CDN or browser, inflate per-request HTML payload, and require `unsafe-inline` in Content Security Policy (CSP) — a significant XSS risk. Cloud Service CDN caches HTML aggressively; inline dynamic styles break cache efficacy.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/*.html
+ui.apps/src/main/content/jcr_root/apps/**/*.htl
+```
+
+#### Detect — Bad Pattern
+```regex
+<style[\s>](?!.*data-sly-test.*false)
+<script(?!\s+src=)(?!.*type\s*=\s*["']application/ld\+json["'])[\s>]
+style\s*=\s*["'][^"']*\$\{
+```
+
+#### Detect — Good Pattern
+- Component-specific styles compiled into a category clientlib loaded only on pages using that component
+- Dynamic values passed via `data-*` attributes; clientlib JS reads them
+- Structured data (`application/ld+json`) is the only acceptable inline `<script>` type
+
+#### Bad Example
+```html
+<!-- hero.html — inline style with dynamic value, not CDN-cacheable -->
+<style>
+    .hero-${properties.variantClass} {
+        background-image: url('${properties.bgImage @ context="uri"}');
+    }
+</style>
+
+<!-- Inline config script — forces CSP unsafe-inline -->
+<script>
+    window.siteConfig = { theme: '${properties.theme}', locale: '${currentPage.language}' };
+</script>
+```
+
+#### Good Example
+```html
+<!-- Pass dynamic values via data attributes; no inline scripts/styles needed -->
+<div class="hero hero--${properties.variantClass @ context='attribute'}"
+     data-bg="${properties.bgImage @ context='uri'}"
+     data-theme="${properties.theme @ context='attribute'}"
+     data-locale="${currentPage.language}">
+    <!-- clientlib JS reads data-* and applies styles -->
+</div>
+
+<!-- Structured data is the only valid inline script -->
+<script type="application/ld+json">${component.jsonLd @ context='unsafe'}</script>
+```
+
+#### False Positives
+- `application/ld+json` structured data scripts (search engine metadata, not executable)
+- AEM component development overlays in `/libs` that are read-only
+
+#### Related Rules
+- `AEMCS-PERF-006` (render-blocking loading — inline scripts compound the problem)
+- `AEMCS-SEC-003` (XSS — `context='unsafe'` required for inline HTML violates CSP)
+
+---
+
+### AEMCS-PERF-008: Client Library Category Proliferation
+
+- **Severity**: Medium
+- **Description**: Defining more than ~8 distinct clientlib categories all loaded on every page creates unnecessary HTTP round-trips (significant pre-HTTP/2) and inflates cache key complexity. The pattern also makes dependency auditing harder and commonly leads to duplicate library code across categories.
+
+#### Detect — Files to Scan
+```
+ui.apps/src/main/content/jcr_root/apps/**/clientlibs/**/.content.xml
+ui.frontend/src/**
+```
+
+#### Detect — Bad Pattern
+- More than 8 `cq:ClientLibraryFolder` nodes each with a unique category, all embedded unconditionally in the page template head
+- `data-sly-call="${clientlib.css @ categories=['c1','c2','c3','c4','c5','c6','c7','c8','c9']}"` — 9+ explicit categories per page
+- Each component has its own category loaded globally instead of conditionally
+
+#### Detect — Good Pattern
+- `mysite.base` — single bundle with all code required on every page
+- Component-specific categories (`mysite.carousel`, `mysite.form`) loaded only by the component's HTL via `data-sly-use` or template policy clientlibs
+- `ui.frontend` webpack build consolidates entry points into ≤ 3 output bundles per page type
+
+#### Bad Example
+```
+# Page template loads ALL of these unconditionally — 9 separate requests
+mysite.header, mysite.footer, mysite.nav, mysite.hero,
+mysite.teaser, mysite.carousel, mysite.form, mysite.search, mysite.utility
+```
+
+#### Good Example
+```
+# Page template loads only the base bundle
+mysite.base          ← compiled from ui.frontend webpack, all shared code
+
+# Each component's .content.xml declares its own category:
+#   carousel/.content.xml  → categories="[mysite.carousel]"
+# AEM policy editor adds mysite.carousel to pages that use carousel — on demand only
+```
+
+#### False Positives
+- Sites with genuinely distinct page types (home, article, product) each loading a type-specific bundle — per-page-type bundles are correct code splitting, not proliferation
+
+#### Related Rules
+- `AEMCS-PERF-004` (clientlib size — proliferation and large size often co-occur)
+- `AEMCS-PERF-006` (render-blocking — more categories = more blocking requests)
+
+---
+
 ## Security Rules
 
 ---
@@ -1463,3 +1679,381 @@ public class DataSyncTask implements Runnable {
 
 #### Related Rules
 - `AEMCS-PERF-001` (async processing — schedulers are a form of async)
+
+---
+
+## Frontend Framework Rules (ui.frontend SPA)
+
+---
+
+### AEMCS-FE-001: Frontend Framework Detection & Audit Scope
+
+- **Severity**: Info
+- **Description**: When `ui.frontend` contains React, Angular, or Vue (detected from `package.json` dependencies), the audit engine activates framework-specific rules covering component patterns, state management, bundle optimization, accessibility, and security. All findings are tagged with `ui.frontend` module.
+
+#### Detect — Files to Scan
+```
+ui.frontend/package.json
+```
+
+#### Detect — Frameworks
+- `react` / `react-dom` → React rules activated
+- `@angular/core` → Angular rules activated
+- `vue` → Vue rules activated
+- None of the above → Generic vanilla JS/TS rules only
+
+---
+
+### AEMCS-FE-002: Heavy Library Dependency
+
+- **Severity**: Medium
+- **Description**: Large libraries (moment.js, lodash full, jQuery, underscore) in `ui.frontend` dependencies bloat the final bundle compiled into AEM client libraries. On AEMaaCS with CDN, large bundles still hurt initial page load and Core Web Vitals (LCP/FID).
+
+#### Detect — Files to Scan
+```
+ui.frontend/package.json
+```
+
+#### Detect — Bad Pattern
+- `moment` in dependencies (330KB+)
+- `lodash` (not `lodash-es`) in dependencies (70KB+)
+- `jquery` in a React/Angular/Vue project
+- `underscore` when native ES6+ methods suffice
+
+#### Detect — Good Pattern
+- `date-fns` or `dayjs` instead of `moment`
+- `lodash-es` or individual imports (`lodash/debounce`)
+- No jQuery in SPA projects
+
+#### Bad Example
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "moment": "^2.29.4",
+    "lodash": "^4.17.21",
+    "jquery": "^3.7.0"
+  }
+}
+```
+
+#### Good Example
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "date-fns": "^3.0.0",
+    "lodash-es": "^4.17.21"
+  }
+}
+```
+
+---
+
+### AEMCS-FE-003: Missing Frontend Test Framework
+
+- **Severity**: High
+- **Description**: AEM `ui.frontend` projects with SPA frameworks must have unit and component testing. Frontend code without tests has high regression risk, especially when bundled output is deployed as AEM clientlibs via Cloud Manager pipelines.
+
+#### Detect — Files to Scan
+```
+ui.frontend/package.json
+```
+
+#### Detect — Bad Pattern
+- No `jest`, `vitest`, `karma`, `@testing-library/*`, `@vue/test-utils` in dependencies
+- No test script in `package.json`
+
+#### Detect — Good Pattern
+- Jest or Vitest with testing-library installed
+- Test script configured: `"test": "jest --coverage"`
+- Coverage threshold configured
+
+---
+
+### AEMCS-FE-004: React — Missing Key in List Rendering
+
+- **Severity**: High
+- **Description**: React list rendering (`.map()`) without `key` prop causes reconciliation errors. React cannot efficiently track list items, leading to incorrect DOM updates and component state leakage.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{tsx,jsx}
+```
+
+#### Detect — Bad Pattern
+```regex
+\.map\s*\(\s*\(?[^)]*\)?\s*=>\s*[(<](?![\s\S]{0,200}key=)
+```
+
+#### Bad Example
+```tsx
+{items.map(item => (
+  <li>{item.name}</li>  {/* Missing key prop */}
+))}
+```
+
+#### Good Example
+```tsx
+{items.map(item => (
+  <li key={item.id}>{item.name}</li>
+))}
+```
+
+---
+
+### AEMCS-FE-005: React — useEffect Without Dependency Array
+
+- **Severity**: High
+- **Description**: `useEffect` without a dependency array runs on every render, causing performance issues and potential infinite loops (especially with state updates inside the effect).
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{tsx,jsx,ts,js}
+```
+
+#### Detect — Bad Pattern
+```regex
+useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[\s\S]*?\}\s*\)\s*;
+```
+(useEffect call with no second argument — no `[]` before closing paren)
+
+#### Bad Example
+```tsx
+useEffect(() => {
+  fetchData();  // Runs on EVERY render — infinite loop if fetchData sets state
+});
+```
+
+#### Good Example
+```tsx
+useEffect(() => {
+  fetchData();
+}, []); // Runs once on mount
+
+useEffect(() => {
+  fetchData(userId);
+}, [userId]); // Runs when userId changes
+```
+
+---
+
+### AEMCS-FE-006: React — dangerouslySetInnerHTML Without Sanitization
+
+- **Severity**: Critical
+- **Description**: Using `dangerouslySetInnerHTML` without sanitization (DOMPurify) is a Cross-Site Scripting (XSS) vulnerability. User-controlled content rendered as raw HTML can execute malicious scripts.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{tsx,jsx}
+```
+
+#### Detect — Bad Pattern
+```regex
+dangerouslySetInnerHTML\s*=\s*\{(?![\s\S]{0,100}(sanitize|DOMPurify|purify))
+```
+
+#### Bad Example
+```tsx
+<div dangerouslySetInnerHTML={{ __html: userComment }} />
+```
+
+#### Good Example
+```tsx
+import DOMPurify from 'dompurify';
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userComment) }} />
+```
+
+---
+
+### AEMCS-FE-007: Angular — Observable Without Unsubscribe
+
+- **Severity**: High
+- **Description**: Angular observables that are `.subscribe()`d without cleanup (`takeUntil`, `unsubscribe` in `ngOnDestroy`, or `async` pipe) leak memory. Each subscription lives beyond component destruction.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.ts
+```
+
+#### Detect — Bad Pattern
+- `.subscribe()` without `takeUntil(destroy$)` pattern
+- Component with subscriptions but no `OnDestroy` implementation
+- No `unsubscribe` in component lifecycle
+
+#### Bad Example
+```typescript
+@Component({ ... })
+export class UserComponent {
+  ngOnInit() {
+    this.http.get('/api/users').subscribe(users => this.users = users);
+    // Never unsubscribed — leaks on every component creation/destruction
+  }
+}
+```
+
+#### Good Example
+```typescript
+@Component({ ... })
+export class UserComponent implements OnDestroy {
+  private destroy$ = new Subject<void>();
+
+  ngOnInit() {
+    this.http.get('/api/users')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(users => this.users = users);
+  }
+
+  ngOnDestroy() { this.destroy$.next(); this.destroy$.complete(); }
+}
+```
+
+---
+
+### AEMCS-FE-008: Angular — *ngFor Without trackBy
+
+- **Severity**: High
+- **Description**: `*ngFor` without `trackBy` causes Angular to destroy and recreate the entire DOM list on every change detection cycle. With large lists this causes visible flicker and poor performance.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.html
+```
+
+#### Detect — Bad Pattern
+```regex
+\*ngFor\s*=\s*"[^"]*"(?![\s\S]{0,50}trackBy)
+```
+
+#### Bad Example
+```html
+<li *ngFor="let item of items">{{ item.name }}</li>
+```
+
+#### Good Example
+```html
+<li *ngFor="let item of items; trackBy: trackById">{{ item.name }}</li>
+```
+
+---
+
+### AEMCS-FE-009: Vue — v-for Without :key
+
+- **Severity**: High
+- **Description**: Vue's `v-for` directive without `:key` binding prevents Vue's virtual DOM from efficiently tracking list changes. Without `:key`, Vue uses a "patch in place" strategy that fails with stateful child components.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.vue
+```
+
+#### Detect — Bad Pattern
+```regex
+v-for\s*=\s*"[^"]*"(?![\s\S]{0,50}:key|v-bind:key)
+```
+
+#### Bad Example
+```html
+<div v-for="item in items">{{ item.name }}</div>
+```
+
+#### Good Example
+```html
+<div v-for="item in items" :key="item.id">{{ item.name }}</div>
+```
+
+---
+
+### AEMCS-FE-010: Vue — v-html Without Sanitization (XSS)
+
+- **Severity**: Critical
+- **Description**: `v-html` renders raw HTML directly into the DOM. If the value contains user-controlled data, attackers can inject malicious scripts. Equivalent to `innerHTML` assignment.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.vue
+```
+
+#### Detect — Bad Pattern
+```regex
+v-html\s*=\s*"(?!.*sanitize|.*DOMPurify)
+```
+
+#### Bad Example
+```html
+<div v-html="userComment"></div>
+```
+
+#### Good Example
+```html
+<div v-html="sanitizedComment"></div>
+<!-- In setup: sanitizedComment = DOMPurify.sanitize(raw) -->
+```
+
+---
+
+### AEMCS-FE-011: Direct DOM Manipulation in SPA Framework
+
+- **Severity**: Medium
+- **Description**: Using `document.getElementById`, `document.querySelector`, or `.innerHTML=` inside React/Angular/Vue components bypasses the framework's virtual DOM / change detection. This causes rendering inconsistencies and memory leaks.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{ts,tsx,js,jsx,vue}
+```
+
+#### Detect — Bad Pattern
+```regex
+document\.(getElementById|querySelector|getElementsBy|createElement)|\.innerHTML\s*=
+```
+
+#### Detect — Good Pattern
+- React: `useRef()` for DOM access
+- Angular: `@ViewChild` or `Renderer2`
+- Vue: `ref="myElement"` template refs
+
+---
+
+### AEMCS-FE-012: Hardcoded Environment URLs in Frontend
+
+- **Severity**: High
+- **Description**: Hardcoded URLs with environment identifiers (localhost, dev, stage, prod) in frontend source code break across AEM environments. On AEMaaCS, Cloud Manager promotes the same artifact across dev→stage→prod, so hardcoded URLs will be wrong in higher environments.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{ts,tsx,js,jsx,vue}
+```
+
+#### Detect — Bad Pattern
+```regex
+(https?:\/\/|\/\/)(localhost|127\.0\.0\.1|[a-z]+\.(dev|stage|prod|internal)\.)
+```
+
+#### Detect — Good Pattern
+- `process.env.REACT_APP_API_URL` (React)
+- `environment.apiUrl` (Angular)
+- `import.meta.env.VITE_API_URL` (Vite/Vue)
+- Runtime config read from AEM page properties or data attributes
+
+---
+
+### AEMCS-FE-013: Secrets in Frontend Code
+
+- **Severity**: Critical
+- **Description**: API keys, tokens, passwords, or secrets in frontend source code are exposed to all users via browser DevTools. All client-side code is public; secrets must be kept on the server side.
+
+#### Detect — Files to Scan
+```
+ui.frontend/src/**/*.{ts,tsx,js,jsx,vue}
+!ui.frontend/src/**/*.{spec,test}.*
+```
+
+#### Detect — Bad Pattern
+```regex
+(api[_-]?key|secret|token|password|auth)\s*[:=]\s*['"][^'"]{8,}['"]
+```
+
+#### Detect — Good Pattern
+- Proxy API calls through AEM servlet/backend
+- Use `.env` files (not committed) with build-time replacement
+- Server-side environment variables only
