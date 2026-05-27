@@ -19,8 +19,10 @@ import { scanTestCoverage, scanMaintainability } from './scans-testing';
 import { scanHtlFrontend } from './scans-htl-frontend';
 import { scanFrontendFramework } from './scans-frontend-framework';
 import { scanAmsSpecific } from './scans-ams-specific';
+import { scanDependencies } from './scans-dependencies';
 
 export { Finding, FindingsMap, StatsMap, ScannerOptions, DEFAULT_THRESHOLDS, ScanContext };
+export type { TechStackInfo } from './types';
 
 export class AemAuditScanner {
   private ctx: AemScannerContext;
@@ -99,11 +101,15 @@ export class AemAuditScanner {
     // 14. AMS-Specific Rules
     this.runSafe('AMS Specific', () => scanAmsSpecific(this.ctx, java, xml, htl));
 
+    // 15. Dependencies & Versions (EOL/deprecated detection)
+    let techStack: import('./types').TechStackInfo = { javaVersion: '', mavenCompilerVersion: '', aemVersion: '', aemSdkVersion: '', coreComponentsVersion: '', frontendMavenPluginVersion: '', nodeVersion: '', npmVersion: '', frontendDeps: {}, mavenDeps: {}, plugins: {} };
+    this.runSafe('Dependencies & Versions', () => { techStack = scanDependencies(this.ctx); });
+
     const duration = Date.now() - startTime;
 
     return {
       findings: this.ctx.findings,
-      stats: this.buildStats(java, xml, htl, js, css, frontendSrc, duration),
+      stats: this.buildStats(java, xml, htl, js, css, frontendSrc, frontendInfo, techStack, duration),
     };
   }
 
@@ -118,7 +124,7 @@ export class AemAuditScanner {
     }
   }
 
-  private buildStats(java: string[], xml: string[], htl: string[], js: string[], css: string[], frontendSrc: string[], duration: number): StatsMap {
+  private buildStats(java: string[], xml: string[], htl: string[], js: string[], css: string[], frontendSrc: string[], frontendInfo: import('./types').FrontendInfo | null, techStack: import('./types').TechStackInfo, duration: number): StatsMap {
     const totalFindings = Object.values(this.ctx.findings).reduce((sum, arr) => sum + arr.length, 0);
     const severityCounts: Record<string, number> = {};
     for (const arr of Object.values(this.ctx.findings)) {
@@ -134,6 +140,10 @@ export class AemAuditScanner {
       htlFiles: htl.length,
       jsFiles: js.length,
       cssFiles: css.length,
+      frontendSrcFiles: frontendSrc.length,
+      frontendFramework: frontendInfo?.framework || 'vanilla',
+      frontendVersion: frontendInfo?.version || '',
+      techStack,
       totalFindings,
       categories: Object.keys(this.ctx.findings).length,
       severityCounts,

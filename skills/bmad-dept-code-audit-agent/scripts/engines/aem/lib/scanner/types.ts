@@ -33,6 +33,20 @@ export interface FrontendInfo {
 
 export type FindingsMap = Record<string, Finding[]>;
 
+export interface TechStackInfo {
+  javaVersion: string;
+  mavenCompilerVersion: string;
+  aemVersion: string;
+  aemSdkVersion: string;
+  coreComponentsVersion: string;
+  frontendMavenPluginVersion: string;
+  nodeVersion: string;
+  npmVersion: string;
+  frontendDeps: Record<string, string>;
+  mavenDeps: Record<string, string>;
+  plugins: Record<string, string>;
+}
+
 export interface StatsMap {
   totalFiles: number;
   javaFiles: number;
@@ -40,6 +54,10 @@ export interface StatsMap {
   htlFiles: number;
   jsFiles: number;
   cssFiles: number;
+  frontendSrcFiles: number;
+  frontendFramework: string;
+  frontendVersion: string;
+  techStack: TechStackInfo;
   totalFindings: number;
   categories: number;
   severityCounts: Record<string, number>;

@@ -54,6 +54,7 @@ export class AemReportGenerator {
       'HTL & Frontend',
       'Test Coverage',
       'Maintainability',
+      'Dependencies & Versions',
     ];
 
     for (const cat of categoryOrder) {
@@ -102,6 +103,9 @@ export class AemReportGenerator {
       ['Generated:', new Date().toISOString().replace('T', ' ').substring(0, 19)],
       ['Project Root:', this.projectRoot],
       ['Platform:', this.platform],
+      ['Java Version:', this.stats.techStack.javaVersion || 'Not detected'],
+      ['AEM Version:', this.stats.techStack.aemVersion || this.stats.techStack.aemSdkVersion || 'Not detected'],
+      ['Frontend:', `${this.stats.frontendFramework}${this.stats.frontendVersion ? ' ' + this.stats.frontendVersion : ''} (${this.stats.frontendSrcFiles} source files)`],
       ['Tool:', 'AEM Code Audit Engine v1.0 (BMAD)'],
       ['Total Findings:', total],
       ['Scan Duration:', `${(this.stats.scanDuration / 1000).toFixed(1)}s`],
@@ -120,7 +124,7 @@ export class AemReportGenerator {
     }
 
     // Severity Breakdown
-    const sevStart = 12;
+    const sevStart = 4 + meta.length + 1;
     ws.mergeCells(`A${sevStart}:G${sevStart}`);
     const secCell = ws.getCell(sevStart, 1);
     secCell.value = 'SEVERITY BREAKDOWN';
@@ -192,7 +196,7 @@ export class AemReportGenerator {
     const categoryOrder = [
       'Performance', 'Code Quality', 'Security', 'SEO', 'Accessibility',
       'Architecture', 'Sling & OSGi', 'Cloud Readiness', 'Dispatcher',
-      'HTL & Frontend', 'Test Coverage', 'Maintainability',
+      'HTL & Frontend', 'Test Coverage', 'Maintainability', 'Dependencies & Versions',
     ];
 
     let catRowIdx = 0;
@@ -230,6 +234,60 @@ export class AemReportGenerator {
     ws.getColumn(5).width = 12;
     ws.getColumn(6).width = 12;
     ws.getColumn(7).width = 12;
+
+    // Technology Stack Section
+    const techStart = catHdrRow + 1 + catRowIdx + 2;
+    ws.mergeCells(`A${techStart}:G${techStart}`);
+    ws.getCell(techStart, 1).value = 'TECHNOLOGY STACK';
+    ws.getCell(techStart, 1).font = SUBTITLE_FONT;
+    ws.getCell(techStart, 1).fill = SECTION_FILL;
+    ws.getCell(techStart, 1).alignment = { horizontal: 'left', vertical: 'middle' };
+    ws.getRow(techStart).height = 28;
+
+    const ts = this.stats.techStack;
+    const techData: [string, string, string][] = [
+      ['Java Version', ts.javaVersion || 'Not detected', ts.javaVersion ? (parseInt(ts.javaVersion) < 17 ? '⚠️ Consider upgrading to Java 17/21 LTS' : '✅ Current LTS') : ''],
+      ['AEM Version', ts.aemVersion || ts.aemSdkVersion || 'Not detected', ''],
+      ['AEM Core Components', ts.coreComponentsVersion || 'Not detected', ts.coreComponentsVersion ? '' : ''],
+      ['Maven Compiler Plugin', ts.mavenCompilerVersion || 'Not detected', ''],
+      ['Frontend Maven Plugin', ts.frontendMavenPluginVersion || 'Not detected', ''],
+      ['Frontend Framework', `${this.stats.frontendFramework}${this.stats.frontendVersion ? ' ' + this.stats.frontendVersion : ''}`, `${this.stats.frontendSrcFiles} source files`],
+      ['Node.js', ts.nodeVersion || 'Not specified', ts.nodeVersion ? '' : ''],
+      ['npm', ts.npmVersion || 'Not specified', ''],
+    ];
+
+    // Add key frontend deps (jQuery, React, Angular, Vue, webpack, etc.)
+    const keyFrontendDeps = ['jquery', 'react', 'react-dom', '@angular/core', 'vue', 'webpack', 'vite', 'typescript', 'antd', 'bootstrap', 'lodash', 'moment', 'axios'];
+    for (const dep of keyFrontendDeps) {
+      if (ts.frontendDeps[dep]) {
+        techData.push([dep, ts.frontendDeps[dep].replace(/[\^~]/g, ''), '']);
+      }
+    }
+
+    const techHdrRow = techStart + 1;
+    const techHeaders = ['Technology', 'Version', 'Status / Notes'];
+    for (let c = 0; c < techHeaders.length; c++) {
+      const cell = ws.getCell(techHdrRow, c + 1);
+      cell.value = techHeaders[c];
+      cell.font = HEADER_FONT;
+      cell.fill = HEADER_FILL;
+      cell.alignment = CENTER_ALIGN;
+      cell.border = HEADER_BORDER;
+    }
+
+    for (let i = 0; i < techData.length; i++) {
+      const row = techHdrRow + 1 + i;
+      ws.getCell(row, 1).value = techData[i][0];
+      ws.getCell(row, 1).font = BODY_FONT_BOLD;
+      ws.getCell(row, 1).border = THIN_BORDER;
+      ws.getCell(row, 2).value = techData[i][1];
+      ws.getCell(row, 2).font = BODY_FONT;
+      ws.getCell(row, 2).border = THIN_BORDER;
+      ws.getCell(row, 3).value = techData[i][2];
+      ws.getCell(row, 3).font = BODY_FONT;
+      ws.getCell(row, 3).border = THIN_BORDER;
+      ws.getRow(row).height = 20;
+    }
   }
 
   // ─── Detail Sheets ─────────────────────────────────────────────────────
