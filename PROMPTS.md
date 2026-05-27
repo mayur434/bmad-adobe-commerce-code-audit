@@ -40,13 +40,83 @@ Legend: ✅ Implemented | 🔲 Planned (not yet available)
 | Config | `show current audit config` |
 | Thresholds | `update thresholds: god_class_lines=600, fat_constructor_deps=12` |
 
-### AEMaaCS 🔲
+### AEM (AEMaaCS + AEM AMS) ✅
+
+**Tier 1 — Scanner (Excel/MD/PDF report with 15 categories):**
 
 | Action | Prompt |
 |--------|--------|
-| Scan | `scan my AEM project` |
-| Deep audit | `deep audit this AEM codebase` |
-| Full audit | `full audit my AEMaaCS project` |
+| Quick scan | `scan my AEM project` |
+| Named scan | `scan my AEM project and name it "Client Name"` |
+| Specify path | `scan my AEM project at D:\path\to\project` |
+| Explicit engine | `scan --engine aem --path /path/to/project` |
+| Platform filter (ACS only) | `scan my AEM Cloud Service project` |
+| Platform filter (AMS only) | `scan my AEM AMS project` |
+| Format: Excel (default) | `scan my AEM project --format excel` |
+| Format: Markdown | `scan my AEM project --format md` |
+| Format: PDF | `scan my AEM project --format pdf` |
+| Format: All three | `scan my AEM project --format all` |
+
+**Tier 2 — Deep Audit (LLM semantic analysis):**
+
+| Action | Prompt |
+|--------|--------|
+| Deep audit | `deep audit my AEM project` |
+| Deep audit (named) | `deep audit for my Wipro project` |
+| LLM analysis only | `run LLM analysis on my AEM codebase` |
+
+**Full Audit (Tier 1 + Tier 2):**
+
+| Action | Prompt |
+|--------|--------|
+| Full audit | `full audit my AEM project` |
+| Full audit (named) | `full audit my AEM project and name it "Client X"` |
+| Complete audit | `complete audit of my AEMaaCS project` |
+| Full audit + format | `full audit my AEM project --format all` |
+
+**Output Formats:**
+
+| Format | Flag | Description |
+|--------|------|-------------|
+| Excel (default) | `--format excel` | `.xlsx` with 16 sheets (Executive Summary + 15 categories) |
+| Markdown | `--format md` | `.md` with severity tables, tech stack, action plan |
+| PDF | `--format pdf` | Styled `.pdf` with category breakdowns & recommendations |
+| All three | `--format all` | Generates `.xlsx` + `.md` + `.pdf` in one run |
+
+**AEM Scan Categories (15):**
+
+| # | Category | What it checks |
+|---|----------|----------------|
+| 1 | Performance | Oak query traversals, Sling Model caching, bundle sizes |
+| 2 | Code Quality | God classes, empty catches, dead code, naming |
+| 3 | Security | XSS, path traversal, admin sessions, CSRF |
+| 4 | SEO | Meta tags, structured data, canonical URLs |
+| 5 | Accessibility | ARIA, alt text, color contrast, keyboard nav |
+| 6 | Architecture | Circular deps, layer violations, coupling |
+| 7 | Sling & OSGi | Resource resolver leaks, service refs, configs |
+| 8 | Cloud Readiness | Mutable content, runmodes, Cloud SDK compat |
+| 9 | Dispatcher | Cache rules, filters, rewrites, headers |
+| 10 | HTL & Frontend | data-sly usage, clientlib patterns, inline JS |
+| 11 | Test Coverage | Missing unit tests, integration test gaps |
+| 12 | Maintainability | Complexity, duplication, documentation |
+| 13 | Frontend Framework | SPA detection (React/Angular/Vue), bundle analysis |
+| 14 | AMS Specific | Replication agents, workflow launchers, legacy APIs |
+| 15 | Dependencies & Versions | Java/AEM/Node.js versions, EOL libraries, outdated deps |
+
+**Post-audit:**
+
+| Action | Prompt |
+|--------|--------|
+| Summary | `summarize the AEM audit findings` |
+| Filter severity | `show all CRITICAL findings from the AEM audit` |
+| Top risks | `what are the top 10 highest-risk AEM findings?` |
+| Security focus | `show all security findings` |
+| Performance focus | `show all performance findings` |
+| Fix plan | `create a fix plan for the critical AEM issues` |
+| Effort estimate | `estimate effort to fix all HIGH and CRITICAL findings` |
+| Export as MD | `generate the report in markdown format` |
+| Export as PDF | `generate the report as PDF` |
+| Export all formats | `generate reports in all formats` |
 
 ### EDS 🔲
 

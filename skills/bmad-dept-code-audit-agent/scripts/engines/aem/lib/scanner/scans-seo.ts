@@ -24,6 +24,25 @@ export function scanSeo(ctx: ScanContext, java: string[], xml: string[], htl: st
           'Poor search rankings, unclear SERP display');
       }
 
+      // Missing apple-touch-icon (BPO Report finding - causes 404s)
+      if (content.includes('<head') && !content.includes('apple-touch-icon')) {
+        ctx.add('SEO', mod, f, 1,
+          'Missing Apple Touch Icon (BPO Finding)',
+          'No <link rel="apple-touch-icon"> in page head — iOS devices request /apple-touch-icon.png causing 404s',
+          '', 'MEDIUM',
+          'Add apple-touch-icon link tags in head: <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">. Create icons at 120x120, 152x152, 180x180 sizes.', 'Low',
+          'iOS shortcut/bookmark has no icon, 404 errors in access logs');
+      }
+
+      // Missing favicon
+      if (content.includes('<head') && !content.includes('icon') && !content.includes('favicon') && !content.includes('shortcut icon')) {
+        ctx.add('SEO', mod, f, 1,
+          'Missing Favicon Reference',
+          'No favicon link tag in page head — browsers request /favicon.ico causing 404',
+          '', 'LOW',
+          'Add <link rel="icon" type="image/x-icon" href="/favicon.ico"> in head element.', 'Low');
+      }
+
       // Missing meta description
       if (content.includes('<head') && !content.includes('meta') && !content.includes('description')) {
         ctx.add('SEO', mod, f, 1,
@@ -177,5 +196,46 @@ export function scanSeo(ctx: ScanContext, java: string[], xml: string[], htl: st
           'Verify noindex/nofollow is intentional. Accidental blocking can remove pages from search results.', 'Low');
       }
     }
+  }
+
+  // Dispatcher/CDN config checks for Cache-Control headers (BPO finding)
+  const dispatcherFiles = [...xml, ...java].filter(f =>
+    ctx.rel(f).includes('dispatcher') || ctx.rel(f).includes('vhost') ||
+    ctx.rel(f).includes('.conf') || ctx.rel(f).includes('httpd')
+  );
+
+  for (const f of dispatcherFiles) {
+    const content = ctx.read(f);
+    if (!content) continue;
+    const mod = ctx.module(f);
+
+    // HTML pages without Cache-Control headers (BPO finding)
+    if (content.includes('.html') && !content.includes('Cache-Control') && content.includes('Header')) {
+      ctx.add('SEO', mod, f, 1,
+        'HTML Pages Missing Cache-Control Header (BPO Finding)',
+        'HTML pages served without Cache-Control header — browsers and CDN cannot cache effectively',
+        '', 'MEDIUM',
+        'Set Cache-Control: max-age=300, stale-while-revalidate=60 for HTML pages. Adobe BPO targets 90%+ cache hit ratio.', 'Medium',
+        'Low cache hit ratio, increased origin load, slower page loads');
+    }
+  }
+
+  // Check for structured data (JSON-LD) in page templates
+  let hasStructuredData = false;
+  for (const f of htl) {
+    const content = ctx.read(f);
+    if (!content) continue;
+    if (content.includes('application/ld+json') || content.includes('schema.org')) {
+      hasStructuredData = true;
+      break;
+    }
+  }
+  if (!hasStructuredData && htl.length > 5) {
+    ctx.add('SEO', 'project', htl[0] || '', 1,
+      'Missing Structured Data (JSON-LD)',
+      'No structured data (schema.org) found — limits rich snippets in search results',
+      '', 'LOW',
+      'Add JSON-LD structured data for Organization, BreadcrumbList, and page-type-specific schemas (Article, Product, etc.).', 'Medium',
+      'No rich snippets in Google, reduced SERP visibility');
   }
 }

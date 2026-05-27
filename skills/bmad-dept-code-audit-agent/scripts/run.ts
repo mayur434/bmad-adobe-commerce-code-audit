@@ -17,14 +17,16 @@ import * as fs from "fs";
 import * as path from "path";
 import { detectPlatform, getEngine, listEngines } from "./engines/registry";
 
-function parseArgs(argv: string[]): { engine?: string; path?: string; listEngines: boolean; help: boolean; remaining: string[] } {
-  const result = { engine: undefined as string | undefined, path: undefined as string | undefined, listEngines: false, help: false, remaining: [] as string[] };
+function parseArgs(argv: string[]): { engine?: string; path?: string; format?: string; listEngines: boolean; help: boolean; remaining: string[] } {
+  const result = { engine: undefined as string | undefined, path: undefined as string | undefined, format: undefined as string | undefined, listEngines: false, help: false, remaining: [] as string[] };
   let i = 0;
   while (i < argv.length) {
     if (argv[i] === "--engine" && i + 1 < argv.length) {
       result.engine = argv[++i];
     } else if (argv[i] === "--path" && i + 1 < argv.length) {
       result.path = argv[++i];
+    } else if (argv[i] === "--format" && i + 1 < argv.length) {
+      result.format = argv[++i];
     } else if (argv[i] === "--list-engines") {
       result.listEngines = true;
     } else if (argv[i] === "-h" || argv[i] === "--help") {
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
     console.log("Usage:");
     console.log("  npx ts-node run.ts --path <project>              Auto-detect and audit");
     console.log("  npx ts-node run.ts --engine <name> --path <path> Explicit engine");
+    console.log("  npx ts-node run.ts --format <type>               Output format: excel, md, pdf, all");
     console.log("  npx ts-node run.ts --list-engines                Show available engines");
     console.log("\nEngine-specific help: npx ts-node run.ts --engine <name> --help");
     return;
@@ -114,6 +117,9 @@ async function main(): Promise<void> {
   const engineArgv: string[] = [];
   if (projectPath) {
     engineArgv.push("--path", projectPath);
+  }
+  if (args.format) {
+    engineArgv.push("--format", args.format);
   }
   engineArgv.push(...args.remaining);
   if (args.help) {

@@ -20,13 +20,13 @@ A multi-agent AI suite purpose-built for **Adobe platform** projects — Commerc
 
 | Agent | Commerce | AEMaaCS | EDS | EDS+Commerce |
 |-------|:--------:|:-------:|:---:|:------------:|
-| **Audit** (Scanner + LLM) | ✅ | 🔲 | 🔲 | 🔲 |
-| **Code Generation** (MCP + LLM) | ✅ | ✅ | 🔲 | 🔲 |
-| **Test Coverage** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
-| **Impact Analysis** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
-| **Scan** (Scanner + LLM) | 🔲 | 🔲 | 🔲 | 🔲 |
+| **Audit** (Scanner + LLM) | Done | -- | -- | -- |
+| **Code Generation** (MCP + LLM) | Done | Done | -- | -- |
+| **Test Coverage** (Scanner + LLM) | -- | -- | -- | -- |
+| **Impact Analysis** (Scanner + LLM) | -- | -- | -- | -- |
+| **Scan** (Scanner + LLM) | -- | -- | -- | -- |
 
-> ✅ = Implemented &nbsp;&nbsp; 🔲 = Scaffolded, coming next
+> Done = Implemented, -- = Scaffolded, coming next
 
 ### What Each Agent Does
 
@@ -141,10 +141,10 @@ bmad-dept-code-*-agent/
     │   └── base.ts            ← Abstract base class / shared interfaces
     └── engines/
         ├── registry.ts        ← Platform auto-detection + engine resolution
-        ├── commerce/          ← Adobe Commerce engine (✅ in Audit)
-        ├── aem/               ← AEMaaCS engine (🔲 placeholder)
-        ├── eds/               ← EDS engine (🔲 placeholder)
-        └── eds_commerce/      ← EDS+Commerce hybrid (🔲 placeholder)
+        ├── commerce/          ← Adobe Commerce engine (in Audit)
+        ├── aem/               ← AEMaaCS engine (placeholder)
+        ├── eds/               ← EDS engine (placeholder)
+        └── eds_commerce/      ← EDS+Commerce hybrid (placeholder)
 ```
 
 #### File Roles Explained

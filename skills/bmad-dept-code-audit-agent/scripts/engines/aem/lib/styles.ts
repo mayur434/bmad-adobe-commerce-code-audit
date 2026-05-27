@@ -95,3 +95,24 @@ export function colorSeverityCol(ws: Worksheet, col: number, maxRow: number): vo
     }
   }
 }
+
+export function colorPriorityCol(ws: Worksheet, col: number, maxRow: number): void {
+  const priorityColors: Record<string, string> = {
+    'P0': 'FFFF0000', 'P1': 'FFFF6600', 'P2': 'FFFFCC00',
+    'P3': 'FF92D050', 'P4': 'FFBDD7EE',
+    'Wave 0': 'FFFF0000', 'Wave 1': 'FFFF6600', 'Wave 2': 'FFFFCC00',
+    'Wave 3': 'FF92D050', 'Wave 4': 'FFBDD7EE', 'Wave 5': 'FFD9D9D9',
+    'P0 —': 'FFFF0000', 'P1 —': 'FFFF6600', 'P2 —': 'FFFFCC00', 'P3 —': 'FF92D050',
+  };
+  for (let r = 2; r <= maxRow; r++) {
+    const cell = ws.getCell(r, col);
+    const val = String(cell.value || '');
+    for (const [prefix, color] of Object.entries(priorityColors)) {
+      if (val.startsWith(prefix)) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+        cell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: color === 'FFFFCC00' ? 'FF000000' : 'FFFFFFFF' } };
+        break;
+      }
+    }
+  }
+}

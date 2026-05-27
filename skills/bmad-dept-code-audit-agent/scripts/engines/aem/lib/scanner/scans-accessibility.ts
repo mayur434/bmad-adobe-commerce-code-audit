@@ -75,6 +75,91 @@ export function scanAccessibility(ctx: ScanContext, java: string[], xml: string[
       }
     }
 
+    // Links with only image child and no accessible name (BrowserStack finding)
+    for (const hit of ctx.grep(f, /<a\s+[^>]*>\s*<img[^>]*>\s*<\/a>/)) {
+      if (!hit.lineText.includes('aria-label') && !hit.lineText.includes('title=')) {
+        const imgTag = hit.lineText.match(/<img[^>]*>/);
+        if (imgTag && !imgTag[0].includes('alt=') || (imgTag && imgTag[0].match(/alt\s*=\s*""/))) {
+          ctx.add('Accessibility', mod, f, hit.lineNum,
+            'Link With Image Missing Accessible Name (WCAG 2.4.4)',
+            'Link contains only an image with empty or missing alt — no discernible text for screen readers',
+            ctx.context(f, hit.lineNum), 'CRITICAL',
+            'Add alt text to the image, or add aria-label/title to the link. Social media links must have accessible names.', 'Low',
+            'Screen readers announce link as empty or only "image"');
+        }
+      }
+    }
+
+    // role="heading" without aria-level (BrowserStack/WCAG finding)
+    for (const hit of ctx.grep(f, /role\s*=\s*"heading"/)) {
+      if (!hit.lineText.includes('aria-level')) {
+        ctx.add('Accessibility', mod, f, hit.lineNum,
+          'role="heading" Without aria-level (WCAG 4.1.2)',
+          'Element with role="heading" must have aria-level to indicate heading hierarchy',
+          ctx.context(f, hit.lineNum), 'CRITICAL',
+          'Add aria-level="2" (or appropriate level 1-6) when using role="heading".', 'Low',
+          'Assistive technology cannot determine heading level');
+      }
+    }
+
+    // Invalid aria-level="0" (BrowserStack finding)
+    for (const hit of ctx.grep(f, /aria-level\s*=\s*"0"/)) {
+      ctx.add('Accessibility', mod, f, hit.lineNum,
+        'Invalid aria-level="0" (WCAG 4.1.2)',
+        'aria-level must be >= 1. Value "0" is invalid and ignored by assistive technology',
+        ctx.context(f, hit.lineNum), 'CRITICAL',
+        'Change aria-level to a valid value between 1-6.', 'Low',
+        'Heading level not communicated to screen readers');
+    }
+
+    // role="menuitem" not inside menu/menubar (BrowserStack finding)
+    for (const hit of ctx.grep(f, /role\s*=\s*"menuitem"/)) {
+      // Check surrounding context for parent with role="menu" or role="menubar"
+      const surrounding = content.split('\n').slice(Math.max(0, hit.lineNum - 10), hit.lineNum).join('\n');
+      if (!surrounding.includes('role="menu"') && !surrounding.includes('role="menubar"') && !surrounding.includes('<menu')) {
+        ctx.add('Accessibility', mod, f, hit.lineNum,
+          'role="menuitem" Without menu Parent (WCAG 1.3.1)',
+          'Element with role="menuitem" must be contained within role="menu" or role="menubar"',
+          ctx.context(f, hit.lineNum), 'CRITICAL',
+          'Wrap menuitem elements in a container with role="menu" or role="menubar". Or change role to "link" or "button".', 'Low',
+          'Assistive technology cannot present proper menu structure');
+      }
+    }
+
+    // <li> not inside <ul> or <ol> (BrowserStack finding)
+    for (const hit of ctx.grep(f, /<li[^>]*>/)) {
+      const surrounding = content.split('\n').slice(Math.max(0, hit.lineNum - 5), hit.lineNum).join('\n');
+      if (!surrounding.includes('<ul') && !surrounding.includes('<ol') && !surrounding.includes('role="list"')) {
+        ctx.add('Accessibility', mod, f, hit.lineNum,
+          'List Item Without List Parent (WCAG 1.3.1)',
+          '<li> element not contained within <ul> or <ol> — violates list semantics',
+          ctx.context(f, hit.lineNum), 'HIGH',
+          'Wrap <li> elements in <ul> or <ol>, or use role="list" on parent container.', 'Low',
+          'Screen readers cannot present proper list structure');
+      }
+    }
+
+    // meta viewport with user-scalable=no (BrowserStack finding)
+    for (const hit of ctx.grep(f, /user-scalable\s*=\s*no/)) {
+      ctx.add('Accessibility', mod, f, hit.lineNum,
+        'Viewport Disables User Scaling (WCAG 1.4.4)',
+        'meta viewport with user-scalable=no prevents zooming on mobile devices',
+        ctx.context(f, hit.lineNum), 'CRITICAL',
+        'Remove user-scalable=no and maximum-scale=1.0 from viewport meta. Users must be able to zoom to 200%.', 'Low',
+        'Low-vision users cannot zoom content on mobile');
+    }
+
+    // Color contrast - hardcoded light colors on white backgrounds (from BPO report)
+    for (const hit of ctx.grep(f, /color\s*:\s*#(?:[5-9a-f][0-9a-f]{5}|[0-9a-f]{3})\s*;/i)) {
+      // Light foreground colors likely fail contrast on white
+      ctx.add('Accessibility', mod, f, hit.lineNum,
+        'Potential Color Contrast Issue (WCAG 1.4.3)',
+        'Light foreground color detected — may fail 4.5:1 contrast ratio against white background',
+        ctx.context(f, hit.lineNum), 'MEDIUM',
+        'Verify contrast ratio meets 4.5:1 for normal text, 3:1 for large text. Use tools like WebAIM Contrast Checker.', 'Low',
+        'Text may be unreadable for low-vision users');
+    }
+
     // Missing tabindex or keyboard handlers on interactive custom elements
     for (const hit of ctx.grep(f, /onclick\s*=\s*"/)) {
       const line = hit.lineText;

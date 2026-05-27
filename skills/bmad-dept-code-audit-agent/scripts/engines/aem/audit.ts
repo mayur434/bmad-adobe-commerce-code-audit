@@ -12,6 +12,8 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import { AemAuditScanner, FindingsMap, StatsMap } from './lib/scanner';
 import { AemReportGenerator } from './lib/report';
+import { generateMarkdownReport } from './lib/report-md';
+import { generatePdfReport } from './lib/report-pdf';
 
 interface Config {
   project?: { path?: string; name?: string };
@@ -40,6 +42,7 @@ function parseArgs(argv: string[]): Record<string, any> {
     else if (arg === '--output') args.output = argv[++i];
     else if (arg === '--platform') args.platform = argv[++i];
     else if (arg === '--module') args.module = argv[++i];
+    else if (arg === '--format') args.format = argv[++i];
     else if (arg === '--json') args.json = true;
     else if (arg === '--help' || arg === '-h') {
       console.log(`AEM Code Audit Engine v1.0
@@ -47,6 +50,7 @@ function parseArgs(argv: string[]): Record<string, any> {
 Usage:
   npx ts-node audit.ts --path /aem-project
   npx ts-node audit.ts --path /aem-project --platform aemcs
+  npx ts-node audit.ts --path /aem-project --format md
   npx ts-node audit.ts --config config.json
 
 Options:
@@ -56,6 +60,7 @@ Options:
   --output <dir>       Output directory (default: output)
   --platform <type>    Platform type: aemcs, aemams, or both (default: both)
   --module <mods>      Module filter (comma-separated: core,ui.apps)
+  --format <type>      Report format: excel, md, pdf, all (default: excel)
   --json               Also output findings as JSON
   --help               Show this help
 
@@ -134,7 +139,6 @@ async function main(): Promise<void> {
 
   const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 15).replace(/(\d{8})(\d{6})/, '$1_$2');
   const branchPart = branch ? `-${branch}` : '';
-  const outputFile = path.join(outputDir, `${projectName}-aem-audit-${timestamp}${branchPart}.xlsx`);
 
   // Print summary
   console.log('═'.repeat(60));
@@ -179,14 +183,43 @@ async function main(): Promise<void> {
   }
   console.log('');
 
-  // Generate report
+  // Generate report(s) based on --format flag
+  const format = (args.format || 'excel').toLowerCase();
+  const validFormats = ['excel', 'md', 'pdf', 'all'];
+  if (!validFormats.includes(format)) {
+    console.error(`❌ Invalid format: ${format}. Valid options: excel, md, pdf, all`);
+    process.exit(1);
+  }
+
   const platformLabel = platform === 'aemcs' ? 'AEM as a Cloud Service' : platform === 'aemams' ? 'AEM Managed Services' : 'AEM (AMS + Cloud Service)';
-  const report = new AemReportGenerator(findings, stats, projectName, projectPath, platformLabel);
-  await report.generate(outputFile);
+  const baseFileName = `${projectName}-aem-audit-${timestamp}${branchPart}`;
+
+  const formats = format === 'all' ? ['excel', 'md', 'pdf'] : [format];
+
+  for (const fmt of formats) {
+    switch (fmt) {
+      case 'excel': {
+        const outputFile = path.join(outputDir, `${baseFileName}.xlsx`);
+        const report = new AemReportGenerator(findings, stats, projectName, projectPath, platformLabel);
+        await report.generate(outputFile);
+        break;
+      }
+      case 'md': {
+        const outputFile = path.join(outputDir, `${baseFileName}.md`);
+        await generateMarkdownReport(findings, stats, projectName, projectPath, platformLabel, outputFile);
+        break;
+      }
+      case 'pdf': {
+        const outputFile = path.join(outputDir, `${baseFileName}.pdf`);
+        await generatePdfReport(findings, stats, projectName, projectPath, platformLabel, outputFile);
+        break;
+      }
+    }
+  }
 
   // Optionally output JSON
   if (args.json) {
-    const jsonFile = outputFile.replace('.xlsx', '.json');
+    const jsonFile = path.join(outputDir, `${baseFileName}.json`);
     fs.writeFileSync(jsonFile, JSON.stringify({ findings, stats }, null, 2));
     console.log(`📋 JSON: ${jsonFile}`);
   }

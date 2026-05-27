@@ -106,10 +106,66 @@ export function scanTestCoverage(ctx: ScanContext, java: string[], xml: string[]
   const uiTestDir = path.join(ctx.root, 'ui.tests');
   if (!fs.existsSync(uiTestDir)) {
     ctx.add('Test Coverage', 'project', ctx.root + '/pom.xml', 1,
-      'Missing UI Tests Module',
-      'No ui.tests module found — end-to-end UI tests recommended',
-      '', 'LOW',
-      'Create ui.tests module with Cypress/Playwright tests for critical user journeys.', 'High');
+      'Missing UI Tests Module (BPO Critical)',
+      'No ui.tests module found — Adobe BPO requires UI testing on production pipeline',
+      '', 'HIGH',
+      'Create ui.tests module with Cypress/Playwright tests for critical user journeys. BPO target: UI tests on production pipeline.', 'High',
+      'BPO Testing score impact — Adobe mandates UI testing on production pipeline');
+  }
+
+  // JaCoCo code coverage plugin check (BPO finding: 0% code coverage)
+  const parentPom = path.join(ctx.root, 'pom.xml');
+  if (fs.existsSync(parentPom)) {
+    const pomContent = ctx.read(parentPom);
+    if (pomContent) {
+      if (!pomContent.includes('jacoco') && !pomContent.includes('JaCoCo')) {
+        ctx.add('Test Coverage', 'project', parentPom, 1,
+          'Missing JaCoCo Code Coverage Plugin (BPO Critical)',
+          'No JaCoCo Maven plugin configured — cannot measure code coverage. BPO target: 80%',
+          '', 'CRITICAL',
+          'Add jacoco-maven-plugin to parent pom.xml. Configure <destFile> and minimum coverage ratio of 0.80. BPO tool expects coverage data.', 'Medium',
+          'Adobe BPO reports 0% code coverage, Testing score: 1/100');
+      } else if (pomContent.includes('jacoco')) {
+        // Check if jacoco has minimum threshold configured
+        if (!pomContent.includes('minimum') && !pomContent.includes('COVEREDRATIO') && !pomContent.includes('BUNDLE')) {
+          ctx.add('Test Coverage', 'project', parentPom, 1,
+            'JaCoCo Without Minimum Threshold',
+            'JaCoCo plugin present but no minimum coverage enforcement — tests pass with 0% coverage',
+            '', 'MEDIUM',
+            'Add <rule><limit><minimum>0.80</minimum></limit></rule> to jacoco check goal to enforce 80% BPO target.', 'Low',
+            'Coverage not enforced, can degrade over time');
+        }
+      }
+    }
+
+    // Check for Custom Functional Testing (BPO finding)
+    if (pomContent) {
+      const hasCustomFunctionalTests = pomContent.includes('custom.functionaltest') ||
+        pomContent.includes('it.tests') ||
+        fs.existsSync(path.join(ctx.root, 'it.tests'));
+      if (!hasCustomFunctionalTests) {
+        ctx.add('Test Coverage', 'project', parentPom, 1,
+          'Missing Custom Functional Testing (BPO Critical)',
+          'No custom functional test module/profile — Adobe BPO mandates this on production pipeline',
+          '', 'CRITICAL',
+          'Create integration tests that run on Cloud Manager production pipeline. Use AEM Testing Clients and server-side integration tests.', 'High',
+          'Adobe BPO Testing score severely impacted — functional testing is a BPO gate');
+      }
+    }
+  }
+
+  // Check for SonarQube quality gate integration
+  const corePom = path.join(ctx.root, 'core', 'pom.xml');
+  if (fs.existsSync(corePom)) {
+    const corePomContent = ctx.read(corePom);
+    if (corePomContent && !corePomContent.includes('sonar') && !corePomContent.includes('Sonar')) {
+      ctx.add('Test Coverage', 'core', corePom, 1,
+        'Missing SonarQube Integration',
+        'No SonarQube plugin configured — code quality and security issues not caught in CI pipeline',
+        '', 'MEDIUM',
+        'Add sonar-maven-plugin and configure quality gate. Integrate with SonarCloud or SonarQube for continuous inspection.', 'Medium',
+        'Code smells, bugs, and vulnerabilities accumulate undetected');
+    }
   }
 }
 

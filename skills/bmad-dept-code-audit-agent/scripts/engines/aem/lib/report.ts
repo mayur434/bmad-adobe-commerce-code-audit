@@ -14,8 +14,9 @@ import {
   CODE_FONT, SECTION_FILL, THIN_BORDER, ZEBRA_FILL_1, ZEBRA_FILL_2,
   CENTER_ALIGN, CENTER_TOP, LEFT_TOP,
   severityFill, severityFont, styleHeaderRow,
-  applyZebraAndBorders, colorSeverityCol,
+  applyZebraAndBorders, colorSeverityCol, colorPriorityCol,
 } from './styles';
+import { getExpertRecommendation } from './expert';
 
 export class AemReportGenerator {
   private findings: FindingsMap;
@@ -66,7 +67,13 @@ export class AemReportGenerator {
     // 3. Recommendations summary
     this.sheetRecommendations();
 
-    // 4. Action Plan
+    // 4. Module Rollout Summary
+    this.sheetModuleRolloutSummary();
+
+    // 5. Module Execution Plan
+    this.sheetModulePlan();
+
+    // 6. Action Plan
     this.sheetActionPlan();
 
     await this.wb.xlsx.writeFile(outputPath);
@@ -298,24 +305,49 @@ export class AemReportGenerator {
       properties: { tabColor: { argb: this.getCategoryColor(category) } }
     });
 
+    // ── Row 1: Category Banner ──
+    const critCount = items.filter(i => i.severity === 'CRITICAL').length;
+    const highCount = items.filter(i => i.severity === 'HIGH').length;
+    const medCount = items.filter(i => i.severity === 'MEDIUM').length;
+    const bannerParts = [`${category}  —  ${items.length} findings`];
+    if (critCount > 0) bannerParts.push(`${critCount} Critical`);
+    if (highCount > 0) bannerParts.push(`${highCount} High`);
+    if (medCount > 0) bannerParts.push(`${medCount} Medium`);
+    const bannerText = bannerParts.join('  |  ');
+
+    ws.mergeCells(1, 1, 1, 13);
+    const bannerCell = ws.getCell(1, 1);
+    bannerCell.value = bannerText;
+    bannerCell.font = { name: 'Calibri', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    bannerCell.fill = critCount > 0
+      ? severityFill('CRITICAL')
+      : highCount > 0
+        ? severityFill('HIGH')
+        : severityFill('MEDIUM');
+    bannerCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    ws.getRow(1).height = 30;
+
+    // ── Row 2: Column Headers ──
     const headers = [
       '#', 'Module', 'File Path', 'Line #', 'Issue Type', 'Description',
       'Code Context', 'Severity', 'Justification',
-      'Impact Analysis', 'Recommendation', 'Effort',
+      'Impact Analysis', 'Recommendation',
+      'Expert Validation & Recommendation', 'Effort',
     ];
     for (let c = 0; c < headers.length; c++) {
-      const cell = ws.getCell(1, c + 1);
+      const cell = ws.getCell(2, c + 1);
       cell.value = headers[c];
       cell.font = HEADER_FONT;
       cell.fill = HEADER_FILL;
       cell.alignment = CENTER_ALIGN;
       cell.border = HEADER_BORDER;
     }
-    ws.getRow(1).height = 28;
-    ws.views = [{ state: 'frozen', ySplit: 1, xSplit: 0 }];
+    ws.getRow(2).height = 28;
+    ws.views = [{ state: 'frozen', ySplit: 2, xSplit: 0 }];
 
+    // ── Row 3+: Data Rows ──
     for (let idx = 0; idx < items.length; idx++) {
-      const r = idx + 2;
+      const r = idx + 3;
       const item = items[idx];
       ws.getRow(r).height = 32;
       ws.getCell(r, 1).value = idx + 1;
@@ -340,7 +372,7 @@ export class AemReportGenerator {
       ws.getCell(r, 7).font = CODE_FONT;
       ws.getCell(r, 7).alignment = LEFT_TOP;
       ws.getCell(r, 8).value = item.severity;
-      ws.getCell(r, 9).value = item.justification || item.impact || '';
+      ws.getCell(r, 9).value = (item.justification || '').substring(0, 500);
       ws.getCell(r, 9).font = BODY_FONT;
       ws.getCell(r, 9).alignment = LEFT_TOP;
       ws.getCell(r, 10).value = item.impact || '';
@@ -349,17 +381,20 @@ export class AemReportGenerator {
       ws.getCell(r, 11).value = item.recommendation;
       ws.getCell(r, 11).font = BODY_FONT;
       ws.getCell(r, 11).alignment = LEFT_TOP;
-      ws.getCell(r, 12).value = item.effort;
+      ws.getCell(r, 12).value = getExpertRecommendation(category, item.type, item.severity, item.effort);
       ws.getCell(r, 12).font = BODY_FONT;
-      ws.getCell(r, 12).alignment = CENTER_TOP;
+      ws.getCell(r, 12).alignment = LEFT_TOP;
+      ws.getCell(r, 13).value = item.effort;
+      ws.getCell(r, 13).font = BODY_FONT;
+      ws.getCell(r, 13).alignment = CENTER_TOP;
     }
 
-    const mr = items.length + 1;
+    const mr = items.length + 2;
     colorSeverityCol(ws, 8, mr);
-    applyZebraAndBorders(ws, mr, headers.length, 2);
+    applyZebraAndBorders(ws, mr, headers.length, 3);
 
     // Column widths
-    const widths = [6, 18, 55, 8, 30, 55, 50, 12, 50, 45, 60, 10];
+    const widths = [6, 28, 55, 8, 28, 60, 55, 12, 65, 60, 65, 75, 10];
     for (let i = 0; i < widths.length; i++) {
       ws.getColumn(i + 1).width = widths[i];
     }
@@ -508,7 +543,210 @@ export class AemReportGenerator {
     for (let i = 0; i < widths.length; i++) ws.getColumn(i + 1).width = widths[i];
   }
 
+  // ─── Module Rollout Summary Sheet ──────────────────────────────────────
+
+  private sheetModuleRolloutSummary(): void {
+    const ws = this.wb.addWorksheet('Module Rollout Summary', { properties: { tabColor: { argb: '8064A2' } } });
+
+    const headers = [
+      'Wave', 'Module', 'Domain', 'Total', 'Critical', 'High', 'Medium', 'Low', 'Info',
+      'Risk Score', 'Deployment / Validation Recommendation',
+    ];
+    for (let c = 0; c < headers.length; c++) {
+      ws.getCell(1, c + 1).value = headers[c];
+    }
+    styleHeaderRow(ws, headers.length);
+    ws.views = [{ state: 'frozen', ySplit: 1, xSplit: 0 }];
+
+    const sevWeight: Record<string, number> = { CRITICAL: 10000, HIGH: 1000, MEDIUM: 100, LOW: 10, INFO: 1 };
+    const modules: Record<string, Finding[]> = {};
+    for (const items of Object.values(this.findings)) {
+      for (const item of items) {
+        const mod = item.module || 'Unknown';
+        if (!modules[mod]) modules[mod] = [];
+        modules[mod].push(item);
+      }
+    }
+
+    const rows: (string | number)[][] = [];
+    for (const [mod, items] of Object.entries(modules)) {
+      const counts: Record<string, number> = {};
+      for (const i of items) counts[i.severity] = (counts[i.severity] || 0) + 1;
+      const crit = counts['CRITICAL'] || 0;
+      const high = counts['HIGH'] || 0;
+      const med = counts['MEDIUM'] || 0;
+      const low = counts['LOW'] || 0;
+      const info = counts['INFO'] || 0;
+      const score = items.reduce((s, i) => s + (sevWeight[i.severity] || 1), 0);
+      const domain = this.moduleDomain(mod);
+      const wave = this.rolloutWave(domain, crit, high, med);
+      const caution = this.deploymentCaution(domain, crit, high);
+      rows.push([wave, mod, domain, items.length, crit, high, med, low, info, score, caution]);
+    }
+
+    const waveOrder: Record<string, number> = {
+      'Wave 0 - Security / Critical Infrastructure': 0,
+      'Wave 1 - Critical Stabilization': 1,
+      'Wave 2 - Content & Experience Delivery': 2,
+      'Wave 3 - Technical Risk Reduction': 3,
+      'Wave 4 - Maintainability / Performance': 4,
+      'Wave 5 - Low Risk Cleanup': 5,
+    };
+    rows.sort((a, b) => (waveOrder[a[0] as string] ?? 99) - (waveOrder[b[0] as string] ?? 99) || (b[9] as number) - (a[9] as number));
+
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        ws.getCell(r + 2, c + 1).value = rows[r][c];
+      }
+    }
+
+    const mr = Math.max(1, rows.length + 1);
+    colorPriorityCol(ws, 1, mr);
+    applyZebraAndBorders(ws, mr, headers.length, 2);
+
+    const widths = [38, 32, 32, 10, 10, 10, 10, 10, 10, 12, 90];
+    for (let i = 0; i < widths.length; i++) {
+      ws.getColumn(i + 1).width = widths[i];
+    }
+  }
+
+  // ─── Module Execution Plan Sheet ───────────────────────────────────────
+
+  private sheetModulePlan(): void {
+    const ws = this.wb.addWorksheet('Module Execution Plan', { properties: { tabColor: { argb: '7030A0' } } });
+
+    const headers = [
+      '#', 'Module', 'Priority', 'Category', 'Severity',
+      'Issue Type', 'File', 'Line', 'Description',
+      'Justification', 'Impact Analysis', 'Recommendation', 'Effort',
+    ];
+    for (let c = 0; c < headers.length; c++) {
+      const cell = ws.getCell(1, c + 1);
+      cell.value = headers[c];
+      cell.font = HEADER_FONT;
+      cell.fill = HEADER_FILL;
+      cell.alignment = CENTER_ALIGN;
+      cell.border = HEADER_BORDER;
+    }
+    ws.getRow(1).height = 28;
+    ws.views = [{ state: 'frozen', ySplit: 1, xSplit: 0 }];
+
+    const sevWeight: Record<string, number> = { CRITICAL: 10000, HIGH: 1000, MEDIUM: 100, LOW: 10, INFO: 1 };
+    const sevOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, INFO: 4 };
+
+    const modItems: Record<string, (Finding & { _category: string })[]> = {};
+    const modScores: Record<string, number> = {};
+    for (const [cat, items] of Object.entries(this.findings)) {
+      for (const item of items) {
+        const mod = item.module || 'Unknown';
+        if (!modItems[mod]) modItems[mod] = [];
+        modItems[mod].push({ ...item, _category: cat });
+        modScores[mod] = (modScores[mod] || 0) + (sevWeight[item.severity] || 1);
+      }
+    }
+
+    const sortedModules = Object.keys(modItems).sort((a, b) => (modScores[b] || 0) - (modScores[a] || 0));
+
+    let row = 2;
+    let seq = 0;
+    for (const mod of sortedModules) {
+      const items = modItems[mod].sort((a, b) => (sevOrder[a.severity] || 5) - (sevOrder[b.severity] || 5));
+      const crit = items.filter((i) => i.severity === 'CRITICAL').length;
+      const high = items.filter((i) => i.severity === 'HIGH').length;
+      const med = items.filter((i) => i.severity === 'MEDIUM').length;
+
+      let modPriority: string;
+      if (crit > 0) modPriority = 'P0 — Immediate';
+      else if (high > 0) modPriority = 'P1 — This Sprint';
+      else if (med > 0) modPriority = 'P2 — Next Sprint';
+      else modPriority = 'P3 — Backlog';
+
+      for (const item of items) {
+        seq++;
+        ws.getRow(row).height = 30;
+        ws.getCell(row, 1).value = seq;
+        ws.getCell(row, 2).value = mod;
+        ws.getCell(row, 3).value = modPriority;
+        ws.getCell(row, 4).value = item._category;
+        ws.getCell(row, 5).value = item.severity;
+        ws.getCell(row, 6).value = item.type;
+        ws.getCell(row, 7).value = item.file;
+        ws.getCell(row, 8).value = item.line;
+        ws.getCell(row, 9).value = (item.description || '').substring(0, 200);
+        ws.getCell(row, 10).value = (item.justification || '').substring(0, 500);
+        ws.getCell(row, 11).value = (item.impact || '').substring(0, 300);
+        ws.getCell(row, 12).value = (item.recommendation || '').substring(0, 300);
+        ws.getCell(row, 13).value = item.effort;
+        row++;
+      }
+    }
+
+    const mr = row - 1;
+    colorSeverityCol(ws, 5, mr);
+    colorPriorityCol(ws, 3, mr);
+    applyZebraAndBorders(ws, mr, headers.length, 2);
+
+    const widths = [6, 30, 20, 28, 12, 32, 48, 8, 55, 60, 55, 60, 10];
+    for (let i = 0; i < widths.length; i++) {
+      ws.getColumn(i + 1).width = widths[i];
+    }
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────────
+
+  private moduleDomain(moduleName: string): string {
+    const m = (moduleName || '').toLowerCase();
+    if (['core', 'core-component', 'foundation', 'commons', 'shared', 'utils'].some((x) => m.includes(x)))
+      return 'Core / Foundation / Shared';
+    if (['auth', 'login', 'sso', 'saml', 'ims', 'security', 'user'].some((x) => m.includes(x)))
+      return 'Authentication / Security';
+    if (['search', 'solr', 'elastic', 'opensearch', 'query'].some((x) => m.includes(x)))
+      return 'Search / Query';
+    if (['workflow', 'dam', 'asset', 'media', 'rendition', 'metadata'].some((x) => m.includes(x)))
+      return 'DAM / Assets / Workflow';
+    if (['form', 'af', 'adaptive'].some((x) => m.includes(x)))
+      return 'Forms / Adaptive Forms';
+    if (['integration', 'api', 'servlet', 'endpoint', 'service', 'connector'].some((x) => m.includes(x)))
+      return 'Integration / API / Services';
+    if (['dispatcher', 'cdn', 'cache', 'varnish', 'fastly'].some((x) => m.includes(x)))
+      return 'Dispatcher / CDN / Cache';
+    if (['ui', 'frontend', 'clientlib', 'component', 'template', 'page'].some((x) => m.includes(x)))
+      return 'Frontend / UI / Components';
+    if (['config', 'osgi', 'runmode', 'cloud'].some((x) => m.includes(x)))
+      return 'Configuration / OSGi / Cloud';
+    if (['replication', 'publish', 'distribution', 'content'].some((x) => m.includes(x)))
+      return 'Content / Replication / Distribution';
+    return 'Core / Shared / Other';
+  }
+
+  private rolloutWave(domain: string, crit: number, high: number, med: number): string {
+    if (crit > 0 && ['Authentication / Security', 'Integration / API / Services', 'Core / Foundation / Shared'].includes(domain))
+      return 'Wave 0 - Security / Critical Infrastructure';
+    if (crit > 0) return 'Wave 1 - Critical Stabilization';
+    if (high > 0 && ['DAM / Assets / Workflow', 'Content / Replication / Distribution', 'Search / Query'].includes(domain))
+      return 'Wave 2 - Content & Experience Delivery';
+    if (high > 0) return 'Wave 3 - Technical Risk Reduction';
+    if (med > 0) return 'Wave 4 - Maintainability / Performance';
+    return 'Wave 5 - Low Risk Cleanup';
+  }
+
+  private deploymentCaution(domain: string, crit: number, high: number): string {
+    const cautions: Record<string, string> = {
+      'Authentication / Security': 'Deploy separately with SSO/SAML validation, session tests, and rollback plan. Verify dispatcher deny rules.',
+      'Integration / API / Services': 'Validate API contracts, authentication tokens, timeout handling, and error responses. Test with external systems.',
+      'Core / Foundation / Shared': 'High blast radius — deploy with full regression suite, monitor error logs, and have immediate rollback plan.',
+      'DAM / Assets / Workflow': 'Validate asset processing workflows, rendition generation, metadata extraction, and DAM performance under load.',
+      'Frontend / UI / Components': 'Validate component rendering on author/publish, clientlib loading, responsive behavior, and FPC invalidation.',
+      'Dispatcher / CDN / Cache': 'Coordinate deployment window; validate cache rules, flush behavior, security filters, and publish delivery.',
+      'Search / Query': 'Validate Oak index definitions, query performance, and search result relevance before/after deployment.',
+      'Configuration / OSGi / Cloud': 'Validate run-mode-specific configs, OSGi service availability, and cloud environment compatibility.',
+      'Content / Replication / Distribution': 'Validate content distribution, activation queues, and publish agent health after deployment.',
+      'Forms / Adaptive Forms': 'Validate form submissions, prefill services, and form data model integrations end-to-end.',
+    };
+    if (cautions[domain]) return cautions[domain];
+    if (crit || high) return 'Deploy in a controlled release with targeted functional, integration, and rollback validation.';
+    return 'Can be batched with similar low-risk modules after automated tests pass.';
+  }
 
   private getCategoryColor(category: string): string {
     const colors: Record<string, string> = {

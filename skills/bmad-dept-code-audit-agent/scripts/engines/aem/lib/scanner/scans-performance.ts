@@ -150,5 +150,36 @@ export function scanPerformance(ctx: ScanContext, java: string[], xml: string[],
         'Configure /enableTTL "1" and set appropriate Cache-Control headers.', 'Medium',
         'Stale content served to users');
     }
+
+    // Missing Cache-Control for HTML pages (BPO finding: empty Cache-Control header)
+    if (f.includes('dispatcher') && content.includes('/rules') && !content.includes('Cache-Control') &&
+        !content.includes('max-age') && !content.includes('Expires')) {
+      ctx.add('Performance', mod, f, 1,
+        'Missing Cache-Control Headers for HTML (BPO Finding)',
+        'Dispatcher config has no Cache-Control/Expires header rules — HTML pages served without caching directives',
+        '', 'HIGH',
+        'Add Header set Cache-Control "max-age=300, stale-while-revalidate=60" for .html files. BPO target: 90%+ cache hit ratio.', 'Medium',
+        'Adobe BPO penalizes: empty Cache-Control on HTML pages, cache hit ratio below 90%');
+    }
+  }
+
+  // Check for CDN/performance config files (BPO cache hit ratio concerns)
+  const confFiles = xml.filter(f => ctx.rel(f).includes('.conf') || ctx.rel(f).includes('vhost'));
+  for (const f of confFiles) {
+    const content = ctx.read(f);
+    if (!content) continue;
+    const mod = ctx.module(f);
+
+    // Check for missing browser caching on static assets
+    if (content.includes('FilesMatch') || content.includes('LocationMatch')) {
+      if (!content.includes('max-age') && !content.includes('immutable')) {
+        ctx.add('Performance', mod, f, 1,
+          'Static Assets Missing Long-Lived Cache Headers',
+          'Static asset rules without max-age/immutable — browser re-fetches unchanged assets',
+          '', 'MEDIUM',
+          'Set Cache-Control: max-age=31536000, immutable for versioned static assets (JS, CSS, images with hash).', 'Low',
+          'Unnecessary origin requests for unchanged assets');
+      }
+    }
   }
 }
