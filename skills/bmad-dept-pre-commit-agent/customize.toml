@@ -1,0 +1,35 @@
+[skill]
+name = "bmad-dept-pre-commit-agent"
+description = "Language-aware pre-commit security reviewer. Analyses staged git diffs file-by-file, applies language-specific vulnerability rules, and blocks commits on configurable severity thresholds."
+version = "1.0.0"
+
+[skill.tools]
+required = ["claude-code"]
+
+[skill.activation]
+keywords = [
+  "pre-commit", "security review", "review staged", "review diff",
+  "commit check", "code review", "check diff", "security scan"
+]
+
+[skill.scripts]
+dispatcher = "scripts/run.ts"
+package    = "scripts/package.json"
+
+[skill.commands]
+# Review currently staged git diff
+review        = "npx ts-node scripts/run.ts"
+# Review a specific diff file
+review-file   = "npx ts-node scripts/run.ts --diff"
+# Install as a git pre-commit hook
+hook          = "skill"
+
+[skill.config]
+# Minimum severity that blocks the commit: NONE | LOW | MEDIUM | HIGH | CRITICAL
+block_severity = "MEDIUM"
+# Claude model used for reviews
+model = "claude-sonnet-4-6"
+# Max tokens per file review
+max_tokens = 1024
+# Path (relative to project root) where the last review JSON is saved
+review_output = ".last-security-review.json"

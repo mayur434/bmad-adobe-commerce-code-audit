@@ -1,0 +1,4 @@
+agent_code,agent_name,action_code,action_label,description,trigger_phrases,output_type,tier,platform,status
+bmad-dept-pre-commit-agent,Pre-Commit Reviewer,review,Review staged diff,Analyse staged git diff and return security findings per file,review staged changes|run security review|check my diff,JSON report,2,git,✅
+bmad-dept-pre-commit-agent,Pre-Commit Reviewer,review-file,Review diff file,Analyse a specific .diff file,review diff file|check diff at,JSON report,2,git,✅
+bmad-dept-pre-commit-agent,Pre-Commit Reviewer,hook,Install pre-commit hook,Wire the reviewer as a git pre-commit hook,install hook|wire hook|set up pre-commit,Shell,1,git,✅

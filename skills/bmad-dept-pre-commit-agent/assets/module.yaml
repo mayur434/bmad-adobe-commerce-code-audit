@@ -1,0 +1,21 @@
+code: pca
+name: "BMAD Pre-Commit Agent"
+description: "Pre-commit security reviewer — language-aware, diff-based, configurable severity blocking."
+default_selected: false
+
+agents:
+  - code: bmad-dept-pre-commit-agent
+    name: Pre-Commit Reviewer
+    title: Security Review Specialist
+    icon: "🔐"
+    description: "Analyses staged git diffs file-by-file using language-specific security rules. Blocks commits when findings meet the configured severity threshold."
+    team: software-development
+
+block_severity:
+  prompt: "Minimum severity that blocks a commit?"
+  default: "MEDIUM"
+  single-select: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
+
+model:
+  prompt: "Claude model to use?"
+  default: "claude-sonnet-4-6"
