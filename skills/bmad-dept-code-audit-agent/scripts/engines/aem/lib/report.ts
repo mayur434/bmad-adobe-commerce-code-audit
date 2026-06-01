@@ -18,6 +18,17 @@ import {
 } from './styles';
 import { getExpertRecommendation } from './expert';
 
+// Maps effort labels to developer-friendly time estimates
+function mapEffortToTime(effort: string): string {
+  switch (effort?.toLowerCase()) {
+    case 'low': return '< 30 min';
+    case 'medium': return '1-4 hours';
+    case 'high': return '1-3 days';
+    case 'very high': return '1+ week';
+    default: return effort || '1-4 hours';
+  }
+}
+
 export class AemReportGenerator {
   private findings: FindingsMap;
   private stats: StatsMap;
@@ -116,6 +127,7 @@ export class AemReportGenerator {
       ['Tool:', 'AEM Code Audit Engine v1.0 (BMAD)'],
       ['Total Findings:', total],
       ['Scan Duration:', `${(this.stats.scanDuration / 1000).toFixed(1)}s`],
+      ['Tokens Processed:', this.stats.tokensProcessed.toLocaleString()],
       ['Files Analyzed:', `Java: ${this.stats.javaFiles}, XML: ${this.stats.xmlFiles}, HTL: ${this.stats.htlFiles}, JS: ${this.stats.jsFiles}, CSS: ${this.stats.cssFiles}`],
     ];
     for (let i = 0; i < meta.length; i++) {
@@ -152,11 +164,11 @@ export class AemReportGenerator {
     }
 
     const sevData: [string, number, string][] = [
-      ['CRITICAL', sev['CRITICAL'] || 0, 'Immediate fix — security, data loss, system stability'],
-      ['HIGH', sev['HIGH'] || 0, 'Fix within 1 sprint — performance, reliability, deprecated APIs'],
-      ['MEDIUM', sev['MEDIUM'] || 0, 'Plan within 1 month — best practices, maintainability'],
-      ['LOW', sev['LOW'] || 0, 'Backlog — code style, minor optimizations'],
-      ['INFO', sev['INFO'] || 0, 'Informational — no action required'],
+      ['CRITICAL', sev['CRITICAL'] || 0, 'Fix NOW — your site is vulnerable or could crash in production'],
+      ['HIGH', sev['HIGH'] || 0, 'Fix this sprint — causes slow pages, memory leaks, or broken features'],
+      ['MEDIUM', sev['MEDIUM'] || 0, 'Plan within 2-4 weeks — makes code harder to maintain or upgrade'],
+      ['LOW', sev['LOW'] || 0, 'Add to backlog — code smell or minor cleanup'],
+      ['INFO', sev['INFO'] || 0, 'FYI — no action needed, just awareness'],
     ];
     for (let i = 0; i < sevData.length; i++) {
       const row = sevHdrRow + 1 + i;
@@ -329,10 +341,10 @@ export class AemReportGenerator {
 
     // ── Row 2: Column Headers ──
     const headers = [
-      '#', 'Module', 'File Path', 'Line #', 'Issue Type', 'Description',
-      'Code Context', 'Severity', 'Justification',
-      'Impact Analysis', 'Recommendation',
-      'Expert Validation & Recommendation', 'Effort',
+      '#', 'Module', 'File', 'Line', 'What\'s Wrong', 'Why It Matters',
+      'Your Code', 'Priority', 'Root Cause',
+      'What Breaks If Not Fixed', 'How to Fix',
+      'AEM Best Practice', 'Fix Time',
     ];
     for (let c = 0; c < headers.length; c++) {
       const cell = ws.getCell(2, c + 1);
@@ -384,7 +396,7 @@ export class AemReportGenerator {
       ws.getCell(r, 12).value = getExpertRecommendation(category, item.type, item.severity, item.effort);
       ws.getCell(r, 12).font = BODY_FONT;
       ws.getCell(r, 12).alignment = LEFT_TOP;
-      ws.getCell(r, 13).value = item.effort;
+      ws.getCell(r, 13).value = mapEffortToTime(item.effort);
       ws.getCell(r, 13).font = BODY_FONT;
       ws.getCell(r, 13).alignment = CENTER_TOP;
     }
@@ -394,7 +406,7 @@ export class AemReportGenerator {
     applyZebraAndBorders(ws, mr, headers.length, 3);
 
     // Column widths
-    const widths = [6, 28, 55, 8, 28, 60, 55, 12, 65, 60, 65, 75, 10];
+    const widths = [6, 28, 55, 8, 28, 60, 55, 12, 65, 60, 65, 75, 12];
     for (let i = 0; i < widths.length; i++) {
       ws.getColumn(i + 1).width = widths[i];
     }
@@ -405,7 +417,7 @@ export class AemReportGenerator {
   private sheetRecommendations(): void {
     const ws = this.wb.addWorksheet('Top Recommendations', { properties: { tabColor: { argb: '00B050' } } });
 
-    const headers = ['#', 'Priority', 'Category', 'Issue Type', 'Count', 'Impact', 'Recommendation', 'Effort'];
+    const headers = ['#', 'Priority', 'Category', 'What\'s Wrong', 'Count', 'What Breaks', 'How to Fix', 'Fix Time'];
     for (let c = 0; c < headers.length; c++) {
       const cell = ws.getCell(1, c + 1);
       cell.value = headers[c];

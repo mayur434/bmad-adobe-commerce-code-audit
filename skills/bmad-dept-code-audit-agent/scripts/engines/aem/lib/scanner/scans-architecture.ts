@@ -22,11 +22,11 @@ export function scanArchitecture(ctx: ScanContext, java: string[], xml: string[]
     )) {
       if (!relPath.includes('/install/') && !relPath.includes('/config/')) {
         ctx.add('Architecture', mod, f, 1,
-          'Mutable Content in ui.apps',
-          'Mutable content path found in ui.apps — should be in ui.content or ui.config',
+          'Author Content Placed in Code Package (ui.apps)',
+          'Paths like /content, /var, /etc/tags contain content that authors can edit. Putting them in ui.apps means EVERY deployment will OVERWRITE author changes made in production.',
           '', 'HIGH',
-          'Move mutable content (/content, /var, /etc/tags, /home) to ui.content module. ui.apps is for immutable code.', 'Medium',
-          'Content overwrite on deployment, environment conflicts');
+          'Move this to the ui.content module instead. Rule: if authors/admins can change it → ui.content. If only devs change it → ui.apps.', 'Medium',
+          'Authors\' content changes get overwritten on every deployment; environments get out of sync because each deploy resets content to what\'s in Git');
       }
     }
 
@@ -53,22 +53,22 @@ export function scanArchitecture(ctx: ScanContext, java: string[], xml: string[]
     if (content.includes('cq:Component') && content.includes('dialog') && !content.includes('cq:dialog')) {
       if (content.includes('/libs/cq/ui/widgets') || content.includes('xtype=')) {
         ctx.add('Architecture', mod, f, 1,
-          'Classic UI Dialog',
-          'Component uses Classic UI dialog (ExtJS) — deprecated since AEM 6.4',
+          'Classic UI Dialog (ExtJS — Removed in Cloud)',
+          'This component uses the old ExtJS-based dialog (Classic UI). Classic UI was deprecated in AEM 6.4 and is completely removed in AEM Cloud Service. Authors cannot edit this component on Cloud.',
           '', 'HIGH',
-          'Convert to Coral UI 3 / Granite UI dialog (_cq_dialog). Classic UI is removed in AEMaaCS.', 'High',
-          'Incompatible with AEMaaCS, deprecated in AMS');
+          'Create a new _cq_dialog/.content.xml using Coral UI 3 / Granite UI widgets. Adobe provides a dialog conversion tool: https://experienceleague.adobe.com/docs/experience-manager-65/developing/devtools/dialog-conversion.html', 'High',
+          'Authors cannot configure this component on AEM Cloud; blocks Cloud migration; no support from Adobe for Classic UI bugs');
       }
     }
 
     // Check for /libs overlay instead of /apps
     if (relPath.includes('/libs/')) {
       ctx.add('Architecture', mod, f, 1,
-        '/libs Overlay Detected',
-        'Content under /libs — never modify /libs. Use /apps for overlays.',
+        'Modifying /libs Directly (NEVER Do This)',
+        '/libs is OWNED by Adobe. Any changes you put here will be DELETED on the next AEM upgrade or service pack. On AEM Cloud, /libs is completely read-only.',
         '', 'CRITICAL',
-        'Move customizations to /apps. /libs is overwritten on upgrades and is read-only in AEMaaCS.', 'Medium',
-        'Content lost on upgrades, forbidden in AEMaaCS');
+        'Move your customization to /apps. To override a /libs component, create the same path under /apps and use sling:resourceSuperType to extend it.', 'Medium',
+        'All your /libs changes vanish after any AEM update; on Cloud Service, deployment will fail outright');
     }
 
     // Component without cq:dialog
@@ -164,27 +164,41 @@ export function scanArchitecture(ctx: ScanContext, java: string[], xml: string[]
         'Extract business logic into dedicated services. Servlet should only handle request/response mapping.', 'High');
     }
 
-    // Direct JCR API usage when Sling API is available
+    // Direct JCR API usage when Sling API is available (skip legitimate JCR-only use cases)
     for (const hit of ctx.grep(f, /import\s+javax\.jcr\.(Node|Session|Property)/)) {
-      if (!content.includes('RepositoryException') || content.includes('adaptTo(Resource.class)')) {
-        ctx.add('Architecture', mod, f, hit.lineNum,
-          'Direct JCR API Instead of Sling API',
-          'Using JCR API directly — Sling Resource API is preferred for portability',
-          ctx.context(f, hit.lineNum), 'LOW',
-          'Prefer Sling Resource API (Resource, ValueMap, ResourceResolver) over direct JCR Node/Session access.', 'Medium');
+      // Skip files that legitimately need JCR API (version mgmt, ACL, workspace operations)
+      const needsJcrApi = content.includes('VersionManager') || content.includes('AccessControlManager') ||
+        content.includes('Workspace') || content.includes('ObservationManager') ||
+        content.includes('javax.jcr.security') || content.includes('jackrabbit.api.security') ||
+        f.includes('Migration') || f.includes('Migrat');
+      if (!needsJcrApi) {
+        if (!content.includes('RepositoryException') || content.includes('adaptTo(Resource.class)')) {
+          ctx.add('Architecture', mod, f, hit.lineNum,
+            'Direct JCR API Instead of Sling API',
+            'Using JCR Node/Session directly when the Sling Resource API would work. Sling API is higher-level, more portable, and the standard for AEM development.',
+            ctx.context(f, hit.lineNum), 'LOW',
+            'Prefer Sling Resource API (Resource, ValueMap, ResourceResolver) over direct JCR Node/Session access. Exception: version management, ACL operations, and workspace manipulation legitimately need JCR API.', 'Medium',
+            undefined, 'Needs Review', 'False positive if code requires JCR-specific operations like version management, ACL manipulation, or observation');
+        }
       }
     }
 
-    // Event listener best practices
+    // Event listener best practices (check for filter in both code and OSGi annotations)
     if (content.includes('EventListener') || content.includes('EventHandler')) {
-      if (!content.includes('EventFilter') && !content.includes('event.topic') && !content.includes('filter')) {
+      // Check for filter in multiple forms: Java code, @Component property, or @Designate config
+      const hasFilter = content.includes('EventFilter') || content.includes('event.topic') ||
+        content.includes('filter') || content.includes('event.filter') ||
+        content.includes('property = {') && content.includes('event.topics') ||
+        content.includes('@Designate');
+      if (!hasFilter) {
         for (const hit of ctx.grep(f, /(?:EventListener|EventHandler)/)) {
           ctx.add('Architecture', mod, f, hit.lineNum,
             'Event Listener Without Filter',
-            'Event listener/handler without filter — processes all events, causing performance issues',
+            'This event listener/handler doesn\'t appear to have a topic filter or event filter. Without filtering, it processes ALL events in the system (hundreds per second), most of which it doesn\'t care about.',
             ctx.context(f, hit.lineNum), 'MEDIUM',
-            'Add event filter or topic filter to process only relevant events. Unfiltered listeners waste CPU.', 'Medium',
-            'Unnecessary event processing overhead');
+            'Add an event topic filter via @Component property: property = {"event.topics=org/apache/sling/api/resource/Resource/ADDED"}. This ensures your handler only runs for relevant events.', 'Medium',
+            'Unnecessary CPU overhead processing irrelevant events; can slow down author instance',
+            'Needs Review', 'False positive if the filter is configured via a parent class, OSGi config file, or @Designate annotation');
         }
       }
     }

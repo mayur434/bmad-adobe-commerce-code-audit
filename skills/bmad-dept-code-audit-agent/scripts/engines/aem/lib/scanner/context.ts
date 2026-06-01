@@ -19,6 +19,7 @@ export class AemScannerContext implements ScanContext {
   platform: 'aemcs' | 'aemams' | 'both';
 
   private fileCache: Map<string, string> = new Map();
+  public totalCharsRead: number = 0;
 
   constructor(opts: ScannerOptions = {}) {
     this.root = opts.root ? path.resolve(opts.root) : null;
@@ -136,7 +137,9 @@ export class AemScannerContext implements ScanContext {
   read(fp: string): string {
     if (!this.fileCache.has(fp)) {
       try {
-        this.fileCache.set(fp, fs.readFileSync(fp, 'utf-8'));
+        const content = fs.readFileSync(fp, 'utf-8');
+        this.totalCharsRead += content.length;
+        this.fileCache.set(fp, content);
       } catch {
         this.fileCache.set(fp, '');
       }
@@ -150,6 +153,7 @@ export class AemScannerContext implements ScanContext {
     const results: GrepResult[] = [];
     try {
       const content = fs.readFileSync(fp, 'utf-8');
+      if (!this.fileCache.has(fp)) this.totalCharsRead += content.length;
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         const m = pattern.exec(lines[i]);

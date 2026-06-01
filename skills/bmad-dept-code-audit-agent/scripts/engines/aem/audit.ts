@@ -171,6 +171,7 @@ async function main(): Promise<void> {
   console.log(`   Total Files: ${stats.totalFiles}`);
   console.log(`   Total Findings: ${stats.totalFindings}`);
   console.log(`   Categories: ${stats.categories}`);
+  console.log(`   Tokens Processed: ${stats.tokensProcessed.toLocaleString()}`);
   console.log(`   Duration: ${(stats.scanDuration / 1000).toFixed(1)}s`);
   console.log('');
   console.log('   Severity Distribution:');

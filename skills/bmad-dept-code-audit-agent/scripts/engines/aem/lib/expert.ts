@@ -146,18 +146,17 @@ const TEMPLATES: Record<string, string> = {
 
 // ─── Status Prefix Map ────────────────────────────────────────────────────────
 const STATUS_PREFIXES: Record<string, string> = {
-  aligned: "Aligned",
-  aligned_prioritize: "Aligned; prioritize",
-  optional: "Optional / style alignment",
-  low_risk: "Low-risk correction",
-  correct_stronger: "Correct with stronger control",
-  needs_review: "Needs review / possible false positive",
+  aligned: "✅ Confirmed issue",
+  aligned_prioritize: "🔴 Fix immediately",
+  optional: "💡 Nice to have",
+  low_risk: "ℹ️ Low risk, easy fix",
+  correct_stronger: "⚠️ Works but needs stronger safeguard",
+  needs_review: "🔍 Verify manually (possible false positive)",
 };
 
 // Rollout suffix for high-effort items
 const ROLLOUT_SUFFIX =
-  " Plan rollout in small PRs with rollback notes because " +
-  "the estimated effort is high.";
+  " ⏱️ This is a bigger change \u2014 break it into small PRs, test each one separately, and have a rollback plan ready.";
 
 // ─── Category Routing Rules ───────────────────────────────────────────────────
 interface CategoryRule {
@@ -336,11 +335,11 @@ function formatRecommendation(
 
   let prefix: string;
   if (statusOverride) {
-    prefix = STATUS_PREFIXES[statusOverride] ?? "Aligned";
+    prefix = STATUS_PREFIXES[statusOverride] ?? "✅ Confirmed issue";
   } else if (severity === "CRITICAL" || severity === "HIGH") {
-    prefix = "Aligned; prioritize";
+    prefix = "🔴 Fix immediately";
   } else {
-    prefix = "Aligned";
+    prefix = "✅ Confirmed issue";
   }
 
   let result = `${prefix}: ${baseText}`;

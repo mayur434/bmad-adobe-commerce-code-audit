@@ -62,6 +62,7 @@ export interface StatsMap {
   categories: number;
   severityCounts: Record<string, number>;
   scanDuration: number;
+  tokensProcessed: number;
 }
 
 export interface ScannerOptions {

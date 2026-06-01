@@ -17,32 +17,34 @@ export function scanPerformance(ctx: ScanContext, java: string[], xml: string[],
       const surrounding = content.substring(Math.max(0, content.indexOf(hit.lineText) - 200), content.indexOf(hit.lineText) + 500);
       if (!surrounding.includes('.setLimit(') && !surrounding.includes('p.limit') && !surrounding.includes('"p.limit"')) {
         ctx.add('Performance', mod, f, hit.lineNum,
-          'Unbounded JCR Query',
-          'Query without explicit limit — can return thousands of results and cause OOM',
+          'Query Without Limit',
+          'This query can return ALL matching nodes (thousands of results). Without a limit, it loads everything into memory and can crash the JVM with OutOfMemoryError.',
           ctx.context(f, hit.lineNum), 'HIGH',
-          'Always set p.limit or query.setLimit() to prevent unbounded result sets. Use pagination for large results.', 'Medium',
-          'Memory exhaustion, slow response times', 'Verified', 'Unbounded queries load all results into memory');
+          'Add .setLimit(100) or p.limit=100 to your query. Use pagination (p.offset + p.limit) if you need more results.', 'Medium',
+          'Pages go blank or throw 500 errors when content grows; AEM instance restarts under load', 'Verified', 'Every QueryBuilder/JCR query without a limit fetches unlimited rows into heap memory');
       }
     }
 
-    // Thread.sleep usage
-    for (const hit of ctx.grep(f, /Thread\.sleep\s*\(/)) {
-      ctx.add('Performance', mod, f, hit.lineNum,
-        'Thread.sleep Usage',
-        'Thread.sleep blocks thread pool — causes thread starvation under load',
-        ctx.context(f, hit.lineNum), 'HIGH',
-        'Use Sling Scheduler or async patterns instead of Thread.sleep.', 'Medium',
-        'Thread pool starvation, request queuing');
+    // Thread.sleep usage (skip test classes)
+    if (!f.includes('Test.java') && !f.includes('/test/') && !f.includes('IT.java') && !f.includes('Mock')) {
+      for (const hit of ctx.grep(f, /Thread\.sleep\s*\(/)) {
+        ctx.add('Performance', mod, f, hit.lineNum,
+          'Thread.sleep Blocks Requests',
+          'Thread.sleep() freezes the current request thread. AEM has limited threads (default ~200), so sleeping threads mean other users wait in queue.',
+          ctx.context(f, hit.lineNum), 'HIGH',
+          'Replace with Sling Scheduler (for delayed tasks) or Sling Jobs (for async work). Example: scheduler.schedule(myRunnable, schedulerOptions)', 'Medium',
+          'Under traffic spikes, users get timeout errors because all threads are sleeping instead of serving requests');
+      }
     }
 
     // Synchronous HTTP calls in servlets/components
     for (const hit of ctx.grep(f, /HttpURLConnection|new\s+URL\(.*\)\.open|CloseableHttpClient|HttpClient\.execute/)) {
       ctx.add('Performance', mod, f, hit.lineNum,
-        'Synchronous HTTP Call',
-        'Blocking HTTP call in request thread — degrades response time and throughput',
+        'Blocking HTTP Call in Request Thread',
+        'This HTTP call blocks the request thread while waiting for a remote server. If that server is slow (2-30s), your AEM page waits too — and the thread is stuck.',
         ctx.context(f, hit.lineNum), 'MEDIUM',
-        'Use async HTTP clients or Sling Jobs for external service calls. Consider circuit breaker patterns.', 'High',
-        'Slow response times, thread exhaustion under load');
+        'Move external API calls to Sling Jobs (background processing) or use async HTTP client. Add a connection timeout (5s max) and circuit breaker for fault tolerance.', 'High',
+        'Pages load slowly when external APIs are down; cascading failures during outages can make the entire site unresponsive');
     }
 
     // Session.save() in loops
@@ -50,38 +52,48 @@ export function scanPerformance(ctx: ScanContext, java: string[], xml: string[],
       const linesBefore = content.split('\n').slice(Math.max(0, hit.lineNum - 10), hit.lineNum).join('\n');
       if (/for\s*\(|while\s*\(|\.forEach\(/.test(linesBefore)) {
         ctx.add('Performance', mod, f, hit.lineNum,
-          'Session.save() in Loop',
-          'Calling session.save() inside a loop — each save triggers a repository commit',
+          'session.save() Called Inside Loop',
+          'Each session.save() does a full JCR commit (disk write + event notification). Inside a loop of 100 items, that\'s 100 commits instead of 1.',
           ctx.context(f, hit.lineNum), 'HIGH',
-          'Batch changes and call session.save() once after the loop completes.', 'Medium',
-          'Excessive I/O, slow content operations');
+          'Move session.save() AFTER the loop ends. Make all changes first, then save once. For bulk operations, use batch commits with try-catch.', 'Medium',
+          'Content imports/migrations take 10-100x longer than necessary; author UI becomes unresponsive during bulk operations');
       }
     }
 
     // ResourceResolver not closed (leak)
     if (content.includes('resourceResolverFactory.getServiceResourceResolver') ||
         content.includes('resourceResolverFactory.getAdministrativeResourceResolver')) {
-      if (!content.includes('.close()') && !content.includes('try-with-resources') && !content.includes('try (')) {
+      // Check for proper cleanup patterns
+      const hasClose = content.includes('.close()');
+      const hasTryWithResources = /try\s*\(.*(?:ResourceResolver|resolver|resourceResolver|rr)/.test(content);
+      const hasFinally = /finally\s*\{[^}]*\.close\(\)/.test(content);
+      if (!hasClose && !hasTryWithResources && !hasFinally) {
         for (const hit of ctx.grep(f, /getServiceResourceResolver|getAdministrativeResourceResolver/)) {
           ctx.add('Performance', mod, f, hit.lineNum,
-            'ResourceResolver Leak',
-            'ResourceResolver opened but never closed — causes memory leak and session exhaustion',
+            'ResourceResolver Never Closed (Memory Leak)',
+            'You opened a ResourceResolver but never called .close(). Each unclosed resolver holds a JCR session open permanently — AEM has a limited pool (~20 sessions).',
             ctx.context(f, hit.lineNum), 'CRITICAL',
-            'Use try-with-resources or ensure close() in finally block. Each unclosed resolver leaks a JCR session.', 'Low',
-            'Memory leak, JCR session exhaustion, instance instability', 'Verified',
-            'ResourceResolver implements Closeable and MUST be closed');
+            'Wrap in try-with-resources: try (ResourceResolver rr = factory.getServiceResourceResolver(authMap)) { ... }. The resolver auto-closes even if exceptions occur.', 'Low',
+            'After ~20 leaked resolvers, AEM stops responding to ALL requests and requires a restart. This is the #1 cause of production outages in AEM.', 'Verified',
+            'ResourceResolver implements Closeable — not closing it leaks a JCR session permanently until JVM restart');
         }
       }
     }
 
-    // Large node traversals
+    // Large node traversals (skip when in a known-small-context like component parsys)
     for (const hit of ctx.grep(f, /listChildren\(\)|getChildren\(\)|adaptTo\(Iterator\.class\)/)) {
+      // Check surrounding code for evidence this iterates a potentially large node
+      const nearby = content.split('\n').slice(Math.max(0, hit.lineNum - 5), hit.lineNum + 5).join('\n');
+      // Skip if it's iterating resource children after a specific path (likely controlled) or in test
+      if (f.includes('/test/') || f.includes('Test.java')) continue;
+      // Flag with lower confidence note
       ctx.add('Performance', mod, f, hit.lineNum,
-        'Potential Large Node Traversal',
-        'Iterating all children without filtering — expensive for nodes with many children',
+        'Iterating All Child Nodes — Could Be Slow on Large Trees',
+        'listChildren()/getChildren() loads ALL child nodes into memory. If this node could have 1,000+ children (e.g., /content/dam subfolders, user-generated content), it will be extremely slow. If you KNOW this node always has < 50 children (like a component parsys), this is fine.',
         ctx.context(f, hit.lineNum), 'MEDIUM',
-        'Use queries or index-backed lookups instead of iterating large child node lists.', 'Medium',
-        'Slow page rendering for content-heavy pages');
+        'If the parent node can grow unbounded: use a QueryBuilder query with path + limit instead. If the parent always has < 50 children (parsys, known structure): you can ignore this.', 'Medium',
+        'Component renders slowly on pages with lots of content; author experience degrades as content grows',
+        'Needs Review', 'False positive if iterating a known-small collection like parsys children or a fixed config node');
     }
 
     // Missing @Activate / lazy initialization

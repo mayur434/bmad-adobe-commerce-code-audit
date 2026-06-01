@@ -12,12 +12,12 @@
 **Overall Risk Score**: {{RISK_SCORE}}/10
 **Total Findings**: {{TOTAL_FINDINGS}}
 
-| Severity | Count |
+| Priority | Count |
 |----------|-------|
-| Critical | {{CRITICAL_COUNT}} |
-| High | {{HIGH_COUNT}} |
-| Medium | {{MEDIUM_COUNT}} |
-| Low | {{LOW_COUNT}} |
+| Critical (Fix NOW) | {{CRITICAL_COUNT}} |
+| High (Fix This Sprint) | {{HIGH_COUNT}} |
+| Medium (Plan Within Month) | {{MEDIUM_COUNT}} |
+| Low (Backlog) | {{LOW_COUNT}} |
 
 ### Key Observations
 
@@ -25,79 +25,79 @@
 
 ---
 
-## Critical Findings
+## Critical Findings (Fix Immediately)
 
 {{#CRITICAL_FINDINGS}}
 ### {{FINDING_ID}}: {{FINDING_TITLE}}
 
 - **Rule**: `{{RULE_ID}}`
-- **Severity**: Critical ({{SEVERITY_SCORE}}/10)
+- **Priority**: Critical ({{SEVERITY_SCORE}}/10)
 - **Confidence**: {{CONFIDENCE_SCORE}}
-- **Location**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
-- **Impact**: {{IMPACT_SUMMARY}}
+- **File**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
+- **What Breaks**: {{IMPACT_SUMMARY}}
 - **Blast Radius**: {{BLAST_RADIUS}}
 
-**Description**: {{DESCRIPTION}}
+**Why It Matters**: {{DESCRIPTION}}
 
-**Evidence**:
+**Your Code**:
 ```{{CODE_LANGUAGE}}
 {{CODE_SNIPPET}}
 ```
 
-**Remediation**: {{REMEDIATION}}
+**How to Fix**: {{REMEDIATION}}
 
-**Effort**: {{REMEDIATION_EFFORT}}
+**Estimated Fix Time**: {{REMEDIATION_EFFORT}}
 
 ---
 {{/CRITICAL_FINDINGS}}
 
-## High Findings
+## High Priority Findings (Fix This Sprint)
 
 {{#HIGH_FINDINGS}}
 ### {{FINDING_ID}}: {{FINDING_TITLE}}
 
 - **Rule**: `{{RULE_ID}}`
-- **Severity**: High ({{SEVERITY_SCORE}}/10)
+- **Priority**: High ({{SEVERITY_SCORE}}/10)
 - **Confidence**: {{CONFIDENCE_SCORE}}
-- **Location**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
-- **Impact**: {{IMPACT_SUMMARY}}
+- **File**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
+- **What Breaks**: {{IMPACT_SUMMARY}}
 
-**Description**: {{DESCRIPTION}}
+**Why It Matters**: {{DESCRIPTION}}
 
-**Evidence**:
+**Your Code**:
 ```{{CODE_LANGUAGE}}
 {{CODE_SNIPPET}}
 ```
 
-**Remediation**: {{REMEDIATION}}
+**How to Fix**: {{REMEDIATION}}
 
 ---
 {{/HIGH_FINDINGS}}
 
-## Medium Findings
+## Medium Priority Findings (Plan Within Month)
 
 {{#MEDIUM_FINDINGS}}
 ### {{FINDING_ID}}: {{FINDING_TITLE}}
 
 - **Rule**: `{{RULE_ID}}`
-- **Severity**: Medium ({{SEVERITY_SCORE}}/10)
+- **Priority**: Medium ({{SEVERITY_SCORE}}/10)
 - **Confidence**: {{CONFIDENCE_SCORE}}
-- **Location**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
+- **File**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
 
-**Description**: {{DESCRIPTION}}
+**Why It Matters**: {{DESCRIPTION}}
 
-**Remediation**: {{REMEDIATION}}
+**How to Fix**: {{REMEDIATION}}
 
 ---
 {{/MEDIUM_FINDINGS}}
 
-## Low Findings
+## Low Priority Findings (Backlog)
 
 {{#LOW_FINDINGS}}
 ### {{FINDING_ID}}: {{FINDING_TITLE}}
 
 - **Rule**: `{{RULE_ID}}`
-- **Location**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
+- **File**: `{{FILE_PATH}}:{{LINE_NUMBER}}`
 - **Description**: {{DESCRIPTION}}
 - **Remediation**: {{REMEDIATION}}
 

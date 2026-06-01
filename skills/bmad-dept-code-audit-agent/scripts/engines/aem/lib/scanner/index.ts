@@ -109,7 +109,7 @@ export class AemAuditScanner {
 
     return {
       findings: this.ctx.findings,
-      stats: this.buildStats(java, xml, htl, js, css, frontendSrc, frontendInfo, techStack, duration),
+      stats: this.buildStats(java, xml, htl, js, css, frontendSrc, frontendInfo, techStack, duration, this.ctx.totalCharsRead),
     };
   }
 
@@ -124,7 +124,7 @@ export class AemAuditScanner {
     }
   }
 
-  private buildStats(java: string[], xml: string[], htl: string[], js: string[], css: string[], frontendSrc: string[], frontendInfo: import('./types').FrontendInfo | null, techStack: import('./types').TechStackInfo, duration: number): StatsMap {
+  private buildStats(java: string[], xml: string[], htl: string[], js: string[], css: string[], frontendSrc: string[], frontendInfo: import('./types').FrontendInfo | null, techStack: import('./types').TechStackInfo, duration: number, totalChars: number): StatsMap {
     const totalFindings = Object.values(this.ctx.findings).reduce((sum, arr) => sum + arr.length, 0);
     const severityCounts: Record<string, number> = {};
     for (const arr of Object.values(this.ctx.findings)) {
@@ -148,6 +148,7 @@ export class AemAuditScanner {
       categories: Object.keys(this.ctx.findings).length,
       severityCounts,
       scanDuration: duration,
+      tokensProcessed: Math.round(totalChars / 4),
     };
   }
 }

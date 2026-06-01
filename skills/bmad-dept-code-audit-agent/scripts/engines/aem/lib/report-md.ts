@@ -49,6 +49,7 @@ export async function generateMarkdownReport(
   lines.push(`| Frontend Framework | ${stats.frontendFramework}${stats.frontendVersion ? ' ' + stats.frontendVersion : ''} |`);
   lines.push(`| Total Findings | **${stats.totalFindings}** |`);
   lines.push(`| Categories | ${stats.categories} |`);
+  lines.push(`| Tokens Processed | ${stats.tokensProcessed.toLocaleString()} |`);
   lines.push(`| Scan Duration | ${(stats.scanDuration / 1000).toFixed(1)}s |`);
   nl();
 
@@ -121,8 +122,8 @@ export async function generateMarkdownReport(
       const showItems = sevItems.slice(0, 25);
       const remaining = sevItems.length - showItems.length;
 
-      lines.push('| # | File | Issue | Recommendation |');
-      lines.push('|---|------|-------|----------------|');
+      lines.push(`| # | File | What's Wrong | How to Fix |`);
+      lines.push('|---|------|--------------|------------|');
 
       for (let i = 0; i < showItems.length; i++) {
         const f = showItems[i];
@@ -146,8 +147,8 @@ export async function generateMarkdownReport(
   nl();
 
   const topRecs = getTopRecommendations(findings);
-  lines.push('| # | Category | Issue Type | Count | Severity | Recommendation |');
-  lines.push('|---|----------|-----------|:-----:|----------|----------------|');
+  lines.push(`| # | Category | What's Wrong | Count | Priority | How to Fix |`);
+  lines.push('|---|----------|--------------|:-----:|----------|------------|');
   for (let i = 0; i < topRecs.length; i++) {
     const r = topRecs[i];
     lines.push(`| ${i + 1} | ${r.category} | ${escapeMd(r.type)} | ${r.count} | ${r.severity} | ${escapeMd(truncate(r.recommendation, 80))} |`);
