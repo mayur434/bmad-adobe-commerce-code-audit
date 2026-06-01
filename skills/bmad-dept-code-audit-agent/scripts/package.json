@@ -7,13 +7,15 @@
     "list-engines": "npx ts-node run.ts --list-engines"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.6",
     "exceljs": "^4.4.0",
+    "fast-glob": "^3.3.0",
     "mammoth": "^1.8.0",
-    "fast-glob": "^3.3.0"
+    "pdfkit": "^0.18.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
-    "ts-node": "^10.9.0"
+    "ts-node": "^10.9.0",
+    "typescript": "^5.4.0"
   }
 }

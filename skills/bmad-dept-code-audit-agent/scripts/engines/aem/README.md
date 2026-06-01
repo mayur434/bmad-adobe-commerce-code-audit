@@ -1,25 +1,47 @@
-# AEM as a Cloud Service Audit Engine
+# AEM Audit Engine v1.0
 
-## Status: Placeholder
+Enterprise-grade static code analysis for AEM (AMS & Cloud Service) projects.
 
-This engine will provide static analysis for AEM as a Cloud Service projects.
+## Usage
 
-## Planned Capabilities
+```bash
+cd scripts
+npx ts-node engines/aem/audit.ts --path /path/to/aem-project
+npx ts-node engines/aem/audit.ts --path /path/to/aem-project --platform aemcs
+npx ts-node engines/aem/audit.ts --config engines/aem/config.json
+```
 
-- Java code quality analysis (OSGi components, Sling models, servlets)
-- Content structure validation (node types, ACLs, namespaces)
-- Dispatcher configuration audit
-- Cloud Manager pipeline compatibility checks
-- AEM SDK API deprecation detection
-- Performance anti-patterns (session leaks, unbounded queries, missing indexes)
-- Security (XSS in HTL, open servlets, missing ACLs)
+## Options
 
-## To Implement
+| Flag | Description |
+|------|-------------|
+| `--path <path>` | AEM project root (required) |
+| `--name <name>` | Project name (default: folder name) |
+| `--output <dir>` | Output directory (default: output) |
+| `--platform <type>` | `aemcs`, `aemams`, or `both` (default: both) |
+| `--module <mods>` | Module filter (comma-separated) |
+| `--config <path>` | Config JSON file |
+| `--json` | Also output findings as JSON |
 
-Create `audit.ts` in this directory with a `main()` function that accepts:
-- `--path` — project root
-- `--name` — project name
-- `--output` — output directory
-- `--config` — config JSON path (optional)
+## Audit Categories (Excel Sub-Sheets)
 
-Follow the same pattern as `engines/commerce/audit.ts`.
+1. **Performance** — Unbounded queries, thread issues, caching, resolver leaks
+2. **Code Quality** — Deprecated APIs, standards, dead code, technical debt
+3. **Security** — XSS, SSRF, credentials, CSRF, injections, ACLs
+4. **SEO** — Meta tags, canonicals, headings, structured data, URLs
+5. **Accessibility** — WCAG 2.1, ARIA, keyboard navigation, focus management
+6. **Architecture** — Project structure, overlays, mutable/immutable, design patterns
+7. **Sling & OSGi** — Resolver leaks, service users, lifecycle, configuration
+8. **Cloud Readiness** — AEMaaCS compatibility, file system, replication, indexes
+9. **Dispatcher** — Cache rules, filters, security configuration
+10. **HTL & Frontend** — Template quality, clientlibs, JavaScript, CSS
+11. **Test Coverage** — Unit tests, integration tests, coverage ratio
+12. **Maintainability** — Complexity, duplication, nesting, parameter lists
+
+## Output
+
+Generates an Excel workbook (`.xlsx`) with:
+- **Executive Summary** — Overall stats, severity breakdown, category counts
+- **One sheet per category** — Detailed findings with module, file, line, severity, recommendations
+- **Top Recommendations** — Prioritized action items aggregated by issue type
+- **Action Plan** — Phased remediation timeline

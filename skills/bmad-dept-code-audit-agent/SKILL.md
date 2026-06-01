@@ -133,7 +133,7 @@ Patch analysis is configured via `config.json`, not CLI flags. When the user say
 4. Run the CLI command normally (patch will be included in the scan automatically)
 
 Example prompt: "analyze patch upgrade impact from 2.4.7-p7 to 2.4.7-p9"
-→ Update config.json patch section, then run: `npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --skip-preflight`
+→ Update config.json patch section, then run: `npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce`
 
 ### Engine Auto-Detection (do not ask unless ambiguous)
 
@@ -149,22 +149,22 @@ Example prompt: "analyze patch upgrade impact from 2.4.7-p7 to 2.4.7-p9"
 
 **User:** "scan my project"
 ```bash
-npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --skip-preflight
+npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce
 ```
 
 **User:** "scan my project and name it Acme, include DB dump at ./db/prod.sql"
 ```bash
-npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --skip-preflight --name "Acme" --db ./db/prod.sql
+npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --name "Acme" --db ./db/prod.sql
 ```
 
 **User:** "run full scanner with everything — DB at /tmp/dump.sql, BRD at /docs/brd.docx, bugs at /reports/bugs.xlsx"
 ```bash
-npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --skip-preflight --db /tmp/dump.sql --brd /docs/brd.docx --bugs /reports/bugs.xlsx
+npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --db /tmp/dump.sql --brd /docs/brd.docx --bugs /reports/bugs.xlsx
 ```
 
 **User:** "just run BRD analysis from /spec/requirements.docx, skip the code scan"
 ```bash
-npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --skip-preflight --no-code-audit --brd /spec/requirements.docx
+npx ts-node {this_skill_path}/scripts/run.ts --path {cwd} --engine commerce --no-code-audit --brd /spec/requirements.docx
 ```
 
 **User:** "what engines are available?"

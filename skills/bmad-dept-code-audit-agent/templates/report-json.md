@@ -60,15 +60,17 @@
             },
             "required": ["file"]
           },
-          "description": { "type": "string" },
-          "evidence": { "type": "string" },
+          "description": { "type": "string", "description": "Plain-language explanation of why this matters to the developer" },
+          "evidence": { "type": "string", "description": "The actual code snippet causing the issue" },
           "impact": {
             "type": "object",
+            "description": "What breaks if this is not fixed",
             "properties": {
-              "summary": { "type": "string" },
+              "summary": { "type": "string", "description": "One-line description of what will go wrong" },
               "blast_radius": {
                 "type": "string",
-                "enum": ["isolated", "module", "section", "site-wide", "cross-system"]
+                "enum": ["isolated", "module", "section", "site-wide", "cross-system"],
+                "description": "How much of the site is affected"
               },
               "dimensions": {
                 "type": "array",
@@ -81,13 +83,15 @@
           },
           "remediation": {
             "type": "object",
+            "description": "How to fix this issue with concrete steps",
             "properties": {
-              "description": { "type": "string" },
+              "description": { "type": "string", "description": "Step-by-step fix instructions with code examples" },
               "effort": {
                 "type": "string",
-                "enum": ["trivial", "small", "medium", "large", "epic"]
+                "enum": ["trivial", "small", "medium", "large", "epic"],
+                "description": "How long the fix takes: trivial=<30min, small=1-2hr, medium=half-day, large=1-3 days, epic=1+ week"
               },
-              "code_suggestion": { "type": "string" }
+              "code_suggestion": { "type": "string", "description": "Ready-to-use code fix (copy-paste ready)" }
             }
           }
         },
